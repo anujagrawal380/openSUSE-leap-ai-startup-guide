@@ -12,23 +12,23 @@ A locally-running, containerized AI assistant that helps new users get started w
 │    suse-assist chat / web / ingest / benchmark          │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐ │
-│  │   Assistant   │  │  RAG Pipeline │  │ System Context│ │
-│  │   Engine      │◄─┤  (ChromaDB)   │  │  Detector     │ │
-│  │              │  │              │  │              │ │
-│  │  TinyLlama   │  │  Embeddings  │  │  OS signals  │ │
-│  │  1.1B (GGUF) │  │  MiniLM-L6   │  │  zypper/YaST │ │
-│  └──────────────┘  └──────┬───────┘  └───────────────┘ │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │   Assistant  │  │ RAG Pipeline │  │ System Context│  │
+│  │   Engine     │◄─┤  (ChromaDB)  │  │  Detector     │  │
+│  │              │  │              │  │               │  │
+│  │  TinyLlama   │  │  Embeddings  │  │  OS signals   │  │
+│  │  1.1B (GGUF) │  │  MiniLM-L6   │  │  zypper/YaST  │  │
+│  └──────────────┘  └──────┬───────┘  └───────────────┘  │
 │                           │                             │
 │                    ┌──────┴───────┐                     │
-│                    │   Doc Scraper │                     │
+│                    │  Doc Scraper │                     │
 │                    │  (openSUSE   │                     │
 │                    │   docs)      │                     │
 │                    └──────────────┘                     │
 │                                                         │
 ├─────────────────────────────────────────────────────────┤
-│              Containerfile + compose.yaml                │
-│           (OCI container, resource-constrained)          │
+│              Containerfile + compose.yaml               │
+│           (OCI container, resource-constrained)         │
 └─────────────────────────────────────────────────────────┘
 ```
 
