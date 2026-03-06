@@ -1,0 +1,27 @@
+# Default configuration for the openSUSE AI Onboarding Assistant
+# Override any setting here; otherwise defaults from config.py apply.
+
+model:
+  # TinyLlama 1.1B — small enough for laptops, good enough for onboarding guidance
+  repo_id: "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
+  filename: "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+  n_ctx: 2048
+  n_threads: 4
+  n_gpu_layers: -1   # -1 = all layers to GPU (Metal/CUDA). Set 0 for CPU-only.
+  temperature: 0.4
+  max_tokens: 350
+  repeat_penalty: 1.3
+
+embedding:
+  model_name: "all-MiniLM-L6-v2"
+  device: "cpu"
+
+rag:
+  chunk_size: 500
+  chunk_overlap: 100
+  top_k: 2
+  collection_name: "opensuse_docs"
+  persist_directory: "./data/vectorstore"
+
+data_dir: "./data"
+log_level: "INFO"
