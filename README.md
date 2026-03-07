@@ -1,5 +1,5 @@
 ---
-title: openSUSE Leap AI Startup Guide
+title: opensuse-leap-ai-startup-guide
 emoji: 🦎
 colorFrom: green
 colorTo: yellow
