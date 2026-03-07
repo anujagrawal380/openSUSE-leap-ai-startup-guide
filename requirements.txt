@@ -1,5 +1,5 @@
-# Web UI and RAG pipeline (lightweight for HF Spaces deployment)
-# For local SLM inference: pip install llama-cpp-python>=0.2.56
+# Web UI and RAG pipeline
+llama-cpp-python>=0.2.56
 gradio>=4.19.0
 huggingface-hub>=0.20.0
 beautifulsoup4>=4.12.0
