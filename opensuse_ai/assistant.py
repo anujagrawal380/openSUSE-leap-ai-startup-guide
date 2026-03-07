@@ -141,7 +141,6 @@ class Assistant:
         self._api_client = InferenceClient(
             model=api_model,
             token=token,
-            provider="hf-inference",
         )
         logger.info("HF Inference API client ready (model: %s).", api_model)
 
