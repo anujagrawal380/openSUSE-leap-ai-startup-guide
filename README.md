@@ -56,7 +56,9 @@ config.model.inference_mode = "api"
 │  │   Engine     │◄─┤  (ChromaDB)  │  │  Detector     │  │
 │  │  (dual mode) │  │              │  │               │  │
 │  │              │  │  Embeddings  │  │  OS signals   │  │
-│  │ local: llama │  │  MiniLM-L6   │  │  zypper/YaST  │  │
+│  │    local:    │  │  MiniLM-L6   │  │  zypper/YaST  │  │
+│  │  TinyLlama   │  │              │  │               │  │
+│  │  1.1B (GGUF) │  │              │  │               │  │ 
 │  │ api: HF API  │  │              │  │               │  │
 │  └──────────────┘  └──────┬───────┘  └───────────────┘  │
 │                           │                             │
@@ -148,30 +150,6 @@ suse-assist sysinfo    # Show detected system context
 ```
 
 All commands support `--demo` to simulate an openSUSE Leap environment on non-openSUSE machines.
-
-### HuggingFace Spaces Deployment
-
-The app is deployed on [HuggingFace Spaces](https://huggingface.co/spaces/anujagawal/opensuse-leap-ai-guide) using the HF Inference API (no local model needed).
-
-To deploy your own:
-
-1. Create a new Gradio Space on HuggingFace
-2. Add a remote:
-   ```bash
-   git remote add hf https://huggingface.co/spaces/<username>/<space-name>
-   ```
-3. Push using an orphan branch (avoids pushing large files from history):
-   ```bash
-   git checkout --orphan hf-deploy
-   git rm --cached demo.gif  # exclude large files
-   git add -A && git reset HEAD -- demo.gif
-   git commit -m "Deploy to HF Spaces"
-   git push hf hf-deploy:main --force
-   git checkout main && git branch -D hf-deploy
-   ```
-4. (Optional) Add `HF_TOKEN` as a Space secret if using a gated API model
-
-The `app.py` entry point auto-sets `inference_mode="api"` so no `llama-cpp-python` is needed on Spaces.
 
 ## Project Structure
 
