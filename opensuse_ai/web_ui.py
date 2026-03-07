@@ -127,7 +127,7 @@ def build_app(
         return "\n".join(f"- **{l.split(':')[0].strip()}:** {':'.join(l.split(':')[1:]).strip()}" for l in lines if ":" in l)
 
     # ── Build the Gradio UI ───────────────────────────────────────────────
-    with gr.Blocks(title="openSUSE Leap AI Startup Guide") as app:
+    with gr.Blocks(title="opensuse-leap-ai-startup-guide") as app:
         # Header
         gr.HTML(
             """
