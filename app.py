@@ -20,7 +20,8 @@ logging.basicConfig(
 # On HF Spaces, ingest docs at startup if vector store is empty
 config = Config.from_yaml("config.yaml")
 
-# HF Spaces free tier is CPU-only — disable GPU offloading
+# HF Spaces: use API mode (no llama-cpp-python needed) and disable GPU offloading
+config.model.inference_mode = "api"
 config.model.n_gpu_layers = 0
 
 

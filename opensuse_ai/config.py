@@ -15,9 +15,13 @@ import yaml
 class ModelConfig:
     """SLM model configuration."""
 
-    # HuggingFace model repo for the GGUF quantized model
+    # Inference mode: "local" = llama-cpp-python, "api" = HF Inference API
+    inference_mode: str = "local"
+    # HuggingFace model repo for the GGUF quantized model (local mode)
     repo_id: str = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
     filename: str = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+    # HF Inference API model (api mode) — used when inference_mode="api"
+    api_model_id: str = "HuggingFaceH4/zephyr-7b-beta"
     # Inference parameters
     n_ctx: int = 2048  # context window (matches TinyLlama training window)
     n_threads: int = 4
