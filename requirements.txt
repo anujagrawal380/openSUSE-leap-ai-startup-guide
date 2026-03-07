@@ -1,5 +1,6 @@
-# Web UI and RAG pipeline
-llama-cpp-python>=0.2.56
+# HF Spaces requirements (API mode — no llama-cpp-python or CUDA needed)
+# CPU-only PyTorch for sentence-transformers embeddings
+--extra-index-url https://download.pytorch.org/whl/cpu
 gradio>=4.19.0
 huggingface-hub>=0.20.0
 beautifulsoup4>=4.12.0
