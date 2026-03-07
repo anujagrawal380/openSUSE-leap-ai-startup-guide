@@ -14,6 +14,33 @@ pinned: false
 
 A locally-running, containerized AI assistant that helps new users get started with **openSUSE Leap**. It combines a **Small Language Model (SLM)** with a **Retrieval-Augmented Generation (RAG)** pipeline over official openSUSE documentation to provide accurate, context-aware guidance.
 
+**[Try the live demo on HuggingFace Spaces →](https://huggingface.co/spaces/anujagawal/opensuse-leap-ai-guide)**
+
+---
+
+## Deployment Modes
+
+The assistant supports two inference backends, configurable via `config.yaml` or environment:
+
+| Mode | Backend | Use Case | Dependencies |
+|------|---------|----------|--------------|
+| **`local`** (default) | `llama-cpp-python` (TinyLlama 1.1B GGUF) | CLI, containers, fully offline & private | `llama-cpp-python`, C++ toolchain |
+| **`api`** | HuggingFace Inference API (Zephyr 7B) | HF Spaces, lightweight cloud deployment | `huggingface-hub` (no compilation) |
+
+Both modes use the **same RAG pipeline** (ChromaDB + MiniLM embeddings) for document retrieval — only the LLM generation step differs.
+
+Set via `config.yaml`:
+```yaml
+model:
+  inference_mode: "local"   # or "api"
+  api_model_id: "HuggingFaceH4/zephyr-7b-beta"  # used in api mode
+```
+
+Or in code (as done in `app.py` for HF Spaces):
+```python
+config.model.inference_mode = "api"
+```
+
 ---
 
 ## Architecture
@@ -27,9 +54,10 @@ A locally-running, containerized AI assistant that helps new users get started w
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
 │  │   Assistant  │  │ RAG Pipeline │  │ System Context│  │
 │  │   Engine     │◄─┤  (ChromaDB)  │  │  Detector     │  │
-│  │              │  │              │  │               │  │
-│  │  TinyLlama   │  │  Embeddings  │  │  OS signals   │  │
-│  │  1.1B (GGUF) │  │  MiniLM-L6   │  │  zypper/YaST  │  │
+│  │  (dual mode) │  │              │  │               │  │
+│  │              │  │  Embeddings  │  │  OS signals   │  │
+│  │ local: llama │  │  MiniLM-L6   │  │  zypper/YaST  │  │
+│  │ api: HF API  │  │              │  │               │  │
 │  └──────────────┘  └──────┬───────┘  └───────────────┘  │
 │                           │                             │
 │                    ┌──────┴───────┐                     │
@@ -49,7 +77,8 @@ A locally-running, containerized AI assistant that helps new users get started w
 | Decision | Rationale |
 |----------|-----------|
 | **TinyLlama 1.1B (Q4 GGUF)** | ~700MB RAM, runs on laptops, good quality for guided Q&A |
-| **llama-cpp-python** | CPU-first inference, no CUDA required, easy containerization |
+| **Dual inference mode** | `local` (llama-cpp-python) for offline/CLI, `api` (HF Inference API) for cloud/Spaces |
+| **HF Inference API for Spaces** | Eliminates C++ compilation and large model downloads in cloud builds |
 | **ChromaDB** | Embedded vector DB, no external service needed |
 | **sentence-transformers (MiniLM)** | Fast, lightweight embeddings (~80MB model) |
 | **System context detection** | Makes responses openSUSE-specific, not generic Linux |
@@ -120,6 +149,30 @@ suse-assist sysinfo    # Show detected system context
 
 All commands support `--demo` to simulate an openSUSE Leap environment on non-openSUSE machines.
 
+### HuggingFace Spaces Deployment
+
+The app is deployed on [HuggingFace Spaces](https://huggingface.co/spaces/anujagawal/opensuse-leap-ai-guide) using the HF Inference API (no local model needed).
+
+To deploy your own:
+
+1. Create a new Gradio Space on HuggingFace
+2. Add a remote:
+   ```bash
+   git remote add hf https://huggingface.co/spaces/<username>/<space-name>
+   ```
+3. Push using an orphan branch (avoids pushing large files from history):
+   ```bash
+   git checkout --orphan hf-deploy
+   git rm --cached demo.gif  # exclude large files
+   git add -A && git reset HEAD -- demo.gif
+   git commit -m "Deploy to HF Spaces"
+   git push hf hf-deploy:main --force
+   git checkout main && git branch -D hf-deploy
+   ```
+4. (Optional) Add `HF_TOKEN` as a Space secret if using a gated API model
+
+The `app.py` entry point auto-sets `inference_mode="api"` so no `llama-cpp-python` is needed on Spaces.
+
 ## Project Structure
 
 ```
@@ -128,7 +181,7 @@ opensuse_ai/
 ├── config.py           # Centralized configuration (YAML + dataclasses)
 ├── scraper.py          # Documentation crawler for doc.opensuse.org
 ├── rag.py              # RAG pipeline: chunking, embedding, retrieval
-├── assistant.py        # SLM engine with prompt engineering
+├── assistant.py        # LLM engine: dual-mode (local llama-cpp / HF Inference API)
 ├── system_context.py   # OS-level context detection (zypper, systemd, etc.)
 ├── benchmark.py        # Performance measurement and reporting
 ├── cli.py              # Rich-powered CLI interface
@@ -145,8 +198,9 @@ docs/
 
 Containerfile           # Multi-stage OCI container build
 compose.yaml            # Compose file with resource constraints
-config.yaml             # Default configuration
-pyproject.toml          # Python packaging (PEP 621)
+config.yaml             # Default configuration (inference_mode, model, RAG settings)
+requirements.txt        # HF Spaces dependencies (API mode, no llama-cpp-python)
+pyproject.toml          # Python packaging (PEP 621, includes llama-cpp-python for local)
 ```
 
 
