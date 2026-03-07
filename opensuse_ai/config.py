@@ -21,7 +21,7 @@ class ModelConfig:
     repo_id: str = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
     filename: str = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
     # HF Inference API model (api mode) — used when inference_mode="api"
-    api_model_id: str = "HuggingFaceH4/zephyr-7b-beta"
+    api_model_id: str = "mistralai/Mistral-7B-Instruct-v0.3"
     # Inference parameters
     n_ctx: int = 2048  # context window (matches TinyLlama training window)
     n_threads: int = 4

@@ -9,7 +9,7 @@ model:
   repo_id: "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
   filename: "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
   # HF Inference API model (used when inference_mode: "api")
-  api_model_id: "HuggingFaceH4/zephyr-7b-beta"
+  api_model_id: "mistralai/Mistral-7B-Instruct-v0.3"
   n_ctx: 2048
   n_threads: 4
   n_gpu_layers: -1   # -1 = all layers to GPU (Metal/CUDA). Set 0 for CPU-only.
