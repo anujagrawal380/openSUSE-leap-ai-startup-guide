@@ -1,3 +1,15 @@
+---
+title: openSUSE Leap AI Startup Guide
+emoji: 🦎
+colorFrom: green
+colorTo: yellow
+sdk: gradio
+sdk_version: "6.9.0"
+python_version: "3.13"
+app_file: app.py
+pinned: false
+---
+
 # openSUSE Leap AI Startup Guide
 
 A locally-running, containerized AI assistant that helps new users get started with **openSUSE Leap**. It combines a **Small Language Model (SLM)** with a **Retrieval-Augmented Generation (RAG)** pipeline over official openSUSE documentation to provide accurate, context-aware guidance.
