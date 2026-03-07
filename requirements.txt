@@ -1,17 +1,19 @@
-# Install CPU-only PyTorch first to avoid downloading ~4 GB of NVIDIA/CUDA libs
---extra-index-url https://download.pytorch.org/whl/cpu
-torch
-sentence-transformers>=2.5.0
-chromadb>=0.4.22
-langchain>=0.1.0
-langchain-community>=0.0.20
-langchain-text-splitters>=0.0.1
+# Web UI and RAG pipeline (lightweight for HF Spaces deployment)
+# For local SLM inference: pip install llama-cpp-python>=0.2.56
+gradio>=4.19.0
+huggingface-hub>=0.20.0
 beautifulsoup4>=4.12.0
 requests>=2.31.0
 rich>=13.7.0
 click>=8.1.0
 pyyaml>=6.0
 psutil>=5.9.0
-huggingface-hub>=0.20.0
-gradio>=4.19.0
-llama-cpp-python>=0.2.56
+
+# RAG pipeline (embeddings + vector DB)
+sentence-transformers>=2.5.0
+chromadb>=0.4.22
+
+# LLM orchestration
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-text-splitters>=0.0.1
