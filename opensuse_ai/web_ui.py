@@ -150,6 +150,7 @@ def build_app(
                         "topic welcome",
                         "topic package_management",
                     ],
+                    cache_examples=False,
                     chatbot=gr.Chatbot(
                         height=480,
                         placeholder="Ask me anything about openSUSE Leap...",
