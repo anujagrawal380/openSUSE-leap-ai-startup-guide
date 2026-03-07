@@ -1,4 +1,6 @@
-llama-cpp-python>=0.2.56
+# Install CPU-only PyTorch first to avoid downloading ~4 GB of NVIDIA/CUDA libs
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 sentence-transformers>=2.5.0
 chromadb>=0.4.22
 langchain>=0.1.0
@@ -12,3 +14,4 @@ pyyaml>=6.0
 psutil>=5.9.0
 huggingface-hub>=0.20.0
 gradio>=4.19.0
+llama-cpp-python>=0.2.56

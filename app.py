@@ -20,6 +20,9 @@ logging.basicConfig(
 # On HF Spaces, ingest docs at startup if vector store is empty
 config = Config.from_yaml("config.yaml")
 
+# HF Spaces free tier is CPU-only — disable GPU offloading
+config.model.n_gpu_layers = 0
+
 
 def _ensure_data():
     """Scrape docs and build vector store if not already present."""
