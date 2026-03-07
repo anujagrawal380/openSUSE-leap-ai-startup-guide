@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.gradio/
 
 # Data directory (models, vectorstore, scraped docs)
 data/
