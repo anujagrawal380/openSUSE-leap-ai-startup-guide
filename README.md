@@ -57,6 +57,12 @@ A locally-running, containerized AI assistant that helps new users get started w
 
 ## Quick Start
 
+### Demo
+
+![Demo Recording](demo.gif)
+
+*Watch the assistant in action:* [View on asciinema](https://asciinema.org/a/O8ubkqKc6Ih6U6LC)
+
 ### Prerequisites
 - Python 3.10+
 - ~4 GB RAM available
