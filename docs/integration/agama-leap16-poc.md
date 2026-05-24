@@ -4,6 +4,8 @@ Status: planned concrete PoC
 
 The meeting notes elevate Agama from exploratory design to a working Leap 16 proof of concept. This document scopes the smallest useful demo.
 
+For the difference between Agama, `jeos-firstboot`, and YaST, see [installer-firstboot-systems.md](installer-firstboot-systems.md).
+
 ## Goal
 
 Demonstrate that an Agama-based Leap 16 installation can install or enable the openSUSE AI onboarding assistant during or immediately after installation.
