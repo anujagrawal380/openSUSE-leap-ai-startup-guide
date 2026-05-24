@@ -147,9 +147,11 @@ suse-assist web        # Launch Gradio web UI in browser
 suse-assist ingest     # Scrape docs and build vector store
 suse-assist benchmark  # Run performance benchmarks
 suse-assist sysinfo    # Show detected system context
+suse-assist models recommend  # Recommend a local model tier based on RAM
 ```
 
 All commands support `--demo` to simulate an openSUSE Leap environment on non-openSUSE machines.
+`chat`, `web`, and `benchmark` also support `--model-tier auto|test|lite|standard|full|custom`.
 
 ## Project Structure
 
@@ -172,7 +174,10 @@ tests/
 └── test_rag.py
 
 docs/
-└── llm-comparison.md   # Comparison of candidate LLMs
+├── llm-comparison.md   # Original comparison of candidate LLMs
+├── action-items/       # GSoC mentor action item breakdowns
+├── evaluations/        # LLM/vector DB evaluation notes
+└── integration/        # Agama/firstboot integration notes
 
 Containerfile           # Multi-stage OCI container build
 compose.yaml            # Compose file with resource constraints
@@ -210,4 +215,3 @@ The assistant includes pre-built onboarding flows accessible via `topic <name>`:
 - **Offline RPM packaging**: Package as an openSUSE RPM with bundled model
 - **Security hardening**: Sandboxed execution, prompt injection defenses
 - **Telemetry**: Opt-in usage analytics for improving responses
-
