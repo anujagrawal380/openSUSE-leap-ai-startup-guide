@@ -11,14 +11,19 @@ from pathlib import Path
 
 import click
 from rich.console import Console
-from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.text import Text
 
-from opensuse_ai.config import Config
+from opensuse_ai.config import (
+    MODEL_TIERS,
+    Config,
+)
+from opensuse_ai.config import (
+    available_ram_gb as detect_available_ram_gb,
+)
 
 console = Console()
 
@@ -42,10 +47,17 @@ def main(ctx: click.Context, config: str) -> None:
 
 @main.command()
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default=None,
+    help="Override configured model tier for this run",
+)
 @click.pass_context
-def chat(ctx: click.Context, demo: bool) -> None:
+def chat(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
     """Start an interactive chat session with the assistant."""
     cfg: Config = ctx.obj["config"]
+    resolved_tier = _apply_model_tier(cfg, model_tier)
     setup_logging(cfg.log_level)
 
     from opensuse_ai.assistant import Assistant
@@ -80,7 +92,7 @@ def chat(ctx: click.Context, demo: bool) -> None:
     with console.status("[bold cyan]Loading language model..."):
         assistant = Assistant(cfg, rag)
         assistant.load_model()
-        console.print("  ✓ Model loaded")
+        console.print(f"  ✓ Model loaded ({resolved_tier} tier)")
 
     # System context
     if demo:
@@ -125,7 +137,10 @@ def chat(ctx: click.Context, demo: bool) -> None:
                 user_input = ONBOARDING_TOPICS[topic_key]
                 console.print(f"[dim]→ {user_input}[/dim]")
             else:
-                console.print(f"[red]Unknown topic '{topic_key}'. Type 'topics' to see available ones.[/red]")
+                console.print(
+                    f"[red]Unknown topic '{topic_key}'. "
+                    "Type 'topics' to see available ones.[/red]"
+                )
                 continue
 
         # Get response
@@ -170,6 +185,24 @@ def _show_topics() -> None:
     console.print("[dim]Use: topic <name> — e.g. 'topic package_management'[/dim]\n")
 
 
+def _apply_model_tier(cfg: Config, requested_tier: str | None) -> str:
+    """Resolve and apply the configured model tier."""
+    resolved = cfg.apply_model_tier(requested_tier)
+    if resolved == "custom":
+        console.print(
+            f"  ℹ Using custom model: {cfg.model.repo_id}/{cfg.model.filename}",
+            style="dim",
+        )
+        return "custom"
+
+    tier = MODEL_TIERS[resolved]
+    console.print(
+        f"  ℹ Model tier: {tier.label} ({cfg.model.repo_id}/{cfg.model.filename})",
+        style="dim",
+    )
+    return resolved
+
+
 @main.command()
 @click.option("--max-pages", type=int, default=None, help="Override max pages to scrape per source")
 @click.pass_context
@@ -207,10 +240,17 @@ def ingest(ctx: click.Context, max_pages: int | None) -> None:
 
 @main.command()
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default=None,
+    help="Override configured model tier for this run",
+)
 @click.pass_context
-def benchmark(ctx: click.Context, demo: bool) -> None:
+def benchmark(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
     """Run performance benchmarks and generate a report."""
     cfg: Config = ctx.obj["config"]
+    _apply_model_tier(cfg, model_tier)
     setup_logging(cfg.log_level)
 
     from opensuse_ai.assistant import Assistant
@@ -258,10 +298,17 @@ def sysinfo(ctx: click.Context) -> None:
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
 @click.option("--share", is_flag=True, help="Create a public Gradio share link")
 @click.option("--port", type=int, default=7860, help="Port for the web server")
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default=None,
+    help="Override configured model tier for this run",
+)
 @click.pass_context
-def web(ctx: click.Context, demo: bool, share: bool, port: int) -> None:
+def web(ctx: click.Context, demo: bool, share: bool, port: int, model_tier: str | None) -> None:
     """Launch the Gradio web UI in the browser."""
     cfg: Config = ctx.obj["config"]
+    _apply_model_tier(cfg, model_tier)
     setup_logging(cfg.log_level)
 
     from opensuse_ai.web_ui import launch_web_ui
@@ -277,6 +324,49 @@ def web(ctx: click.Context, demo: bool, share: bool, port: int) -> None:
     )
 
     launch_web_ui(cfg, demo_mode=demo, share=share, server_port=port)
+
+
+@main.group()
+def models() -> None:
+    """Inspect and select local model tiers."""
+
+
+@models.command("recommend")
+@click.option(
+    "--available-ram-gb",
+    type=float,
+    default=None,
+    help="Override detected available RAM for testing",
+)
+@click.pass_context
+def recommend_model(ctx: click.Context, available_ram_gb: float | None) -> None:
+    """Recommend a model tier without downloading a model."""
+    cfg: Config = ctx.obj["config"]
+    ram_gb = available_ram_gb if available_ram_gb is not None else detect_available_ram_gb()
+    recommended = cfg.apply_model_tier("auto", ram_gb=ram_gb)
+
+    table = Table(title="Model Tier Recommendation", border_style="cyan")
+    table.add_column("Tier", style="bold cyan")
+    table.add_column("Min Available RAM")
+    table.add_column("Model")
+    table.add_column("Context")
+    table.add_column("Notes")
+
+    for name, tier in MODEL_TIERS.items():
+        marker = "recommended" if name == recommended else ""
+        table.add_row(
+            f"{tier.label} {marker}".strip(),
+            f"{tier.min_available_ram_gb:.0f} GB",
+            f"{tier.repo_id}/{tier.filename}",
+            f"{tier.n_ctx:,}",
+            tier.description,
+        )
+
+    console.print(table)
+    console.print(
+        f"[dim]Detected available RAM: {ram_gb:.1f} GB. "
+        f"Use --model-tier {recommended} to force this tier.[/dim]"
+    )
 
 
 if __name__ == "__main__":

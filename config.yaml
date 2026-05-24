@@ -5,7 +5,12 @@ model:
   # Inference mode: "local" (llama-cpp-python) or "api" (HF Inference API)
   # Use "local" for CLI / container deployments, "api" for HF Spaces
   inference_mode: "local"
-  # TinyLlama 1.1B — small enough for laptops, good enough for onboarding guidance
+  # Hardware tier: "test", "lite", "standard", "full", "auto", or "custom".
+  # Keep "test" as the PoC default to avoid surprise multi-GB downloads.
+  # Use: suse-assist models recommend
+  tier: "test"
+  # TinyLlama 1.1B — small enough for laptops and demos.
+  # These fields are replaced by the tier unless tier is "custom".
   repo_id: "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
   filename: "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
   # HF Inference API model (used when inference_mode: "api")

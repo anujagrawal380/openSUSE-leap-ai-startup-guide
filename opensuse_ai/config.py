@@ -11,12 +11,92 @@ from pathlib import Path
 import yaml
 
 
+@dataclass(frozen=True)
+class ModelTier:
+    """Hardware-oriented model tier."""
+
+    name: str
+    label: str
+    min_available_ram_gb: float
+    repo_id: str
+    filename: str
+    n_ctx: int
+    max_tokens: int
+    description: str
+
+
+MODEL_TIERS: dict[str, ModelTier] = {
+    "test": ModelTier(
+        name="test",
+        label="Test",
+        min_available_ram_gb=0.0,
+        repo_id="TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
+        filename="tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+        n_ctx=2048,
+        max_tokens=350,
+        description="Tiny CI/demo fallback; not recommended for end users.",
+    ),
+    "lite": ModelTier(
+        name="lite",
+        label="Lite",
+        min_available_ram_gb=3.0,
+        repo_id="Qwen/Qwen3-1.7B-GGUF",
+        filename="Qwen3-1.7B-Q4_K_M.gguf",
+        n_ctx=32768,
+        max_tokens=500,
+        description="Recommended low-resource tier for 4 GB systems.",
+    ),
+    "standard": ModelTier(
+        name="standard",
+        label="Standard",
+        min_available_ram_gb=6.0,
+        repo_id="Qwen/Qwen3-4B-GGUF",
+        filename="Qwen3-4B-Q4_K_M.gguf",
+        n_ctx=32768,
+        max_tokens=700,
+        description="Recommended default candidate for 8 GB systems.",
+    ),
+    "full": ModelTier(
+        name="full",
+        label="Full",
+        min_available_ram_gb=14.0,
+        repo_id="Qwen/Qwen3-8B-GGUF",
+        filename="Qwen3-8B-Q4_K_M.gguf",
+        n_ctx=32768,
+        max_tokens=900,
+        description="Higher-quality tier for systems with workstation-class memory.",
+    ),
+}
+
+
+def available_ram_gb() -> float:
+    """Return currently available RAM in GiB, or 0 when it cannot be detected."""
+    try:
+        import psutil
+
+        return psutil.virtual_memory().available / (1024**3)
+    except ImportError:
+        return 0.0
+
+
+def recommend_model_tier(ram_gb: float | None = None) -> str:
+    """Choose the highest tier that fits the detected available RAM."""
+    ram_gb = available_ram_gb() if ram_gb is None else ram_gb
+    selected = "lite"
+    for name, tier in MODEL_TIERS.items():
+        if ram_gb >= tier.min_available_ram_gb:
+            selected = name
+    return selected
+
+
 @dataclass
 class ModelConfig:
     """SLM model configuration."""
 
     # Inference mode: "local" = llama-cpp-python, "api" = HF Inference API
     inference_mode: str = "local"
+    # Hardware tier: "test", "lite", "standard", "full", "auto", or "custom"
+    tier: str = "test"
     # HuggingFace model repo for the GGUF quantized model (local mode)
     repo_id: str = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
     filename: str = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
@@ -88,6 +168,37 @@ class Config:
             max_pages=150,
         ),
     ])
+
+    def apply_model_tier(
+        self,
+        requested_tier: str | None = None,
+        ram_gb: float | None = None,
+    ) -> str:
+        """
+        Apply a model tier to the local model settings.
+
+        Returns the resolved tier name. The "custom" tier leaves repo/filename/context
+        fields untouched so advanced users can provide their own model in config.yaml.
+        """
+        tier_name = requested_tier or self.model.tier
+        if tier_name == "auto":
+            tier_name = recommend_model_tier(ram_gb)
+
+        if tier_name == "custom":
+            self.model.tier = "custom"
+            return "custom"
+
+        if tier_name not in MODEL_TIERS:
+            valid = ", ".join(["auto", "custom", *MODEL_TIERS])
+            raise ValueError(f"Unknown model tier '{tier_name}'. Expected one of: {valid}")
+
+        tier = MODEL_TIERS[tier_name]
+        self.model.tier = tier_name
+        self.model.repo_id = tier.repo_id
+        self.model.filename = tier.filename
+        self.model.n_ctx = tier.n_ctx
+        self.model.max_tokens = tier.max_tokens
+        return tier_name
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "Config":
