@@ -15,6 +15,17 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+# When the assistant runs inside a container, the container's own rootfs is not
+# the host. Set SUSE_AI_HOST_ROOT to a read-only bind-mount of the host root
+# (e.g. `-v /:/host:ro -e SUSE_AI_HOST_ROOT=/host`) so detection reports the
+# real openSUSE host instead of the container base image. Empty = native run.
+HOST_ROOT = os.environ.get("SUSE_AI_HOST_ROOT", "").rstrip("/")
+
+
+def _host_path(path: str) -> str:
+    """Map an absolute system path to the host bind-mount, if configured."""
+    return f"{HOST_ROOT}{path}" if HOST_ROOT else path
+
 
 @dataclass
 class SystemContext:
@@ -72,7 +83,7 @@ def detect_system_context() -> SystemContext:
 
     # Detect distribution
     try:
-        with open("/etc/os-release") as f:
+        with open(_host_path("/etc/os-release")) as f:
             os_release = {}
             for line in f:
                 if "=" in line:
@@ -84,8 +95,18 @@ def detect_system_context() -> SystemContext:
     except FileNotFoundError:
         ctx.distro = platform.system()
 
-    # Package manager detection
-    if shutil.which("zypper"):
+    # Package manager detection. When reading a host bind-mount, the container's
+    # own PATH is irrelevant — probe the host filesystem for the binaries.
+    if HOST_ROOT:
+        if os.path.exists(_host_path("/usr/bin/zypper")):
+            ctx.package_manager = "zypper"
+        elif os.path.exists(_host_path("/usr/bin/dnf")):
+            ctx.package_manager = "dnf"
+        elif os.path.exists(_host_path("/usr/bin/apt")):
+            ctx.package_manager = "apt"
+        else:
+            ctx.package_manager = "unknown"
+    elif shutil.which("zypper"):
         ctx.package_manager = "zypper"
     elif shutil.which("dnf"):
         ctx.package_manager = "dnf"
@@ -109,17 +130,18 @@ def detect_system_context() -> SystemContext:
     # Disk usage
     try:
         import psutil
-        disk = psutil.disk_usage("/")
+        disk = psutil.disk_usage(HOST_ROOT or "/")
         ctx.disk_usage_percent = disk.percent
     except (ImportError, OSError):
         pass
 
-    # openSUSE-specific signals
-    if ctx.package_manager == "zypper":
-        _detect_zypper_state(ctx)
-
-    # systemd failed services
-    _detect_failed_services(ctx)
+    # zypper/systemctl probes run host binaries — only valid on a native run.
+    # When reading a host bind-mount from inside a container, skip them rather
+    # than report the container's (wrong) update/service state.
+    if not HOST_ROOT:
+        if ctx.package_manager == "zypper":
+            _detect_zypper_state(ctx)
+        _detect_failed_services(ctx)
 
     return ctx
 

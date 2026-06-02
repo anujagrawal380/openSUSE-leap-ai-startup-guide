@@ -9,6 +9,11 @@ Supports pluggable vector store backends (ChromaDB, LanceDB) via the
 """
 
 import logging
+import os
+import socket
+from inspect import signature
+from pathlib import Path
+from urllib.parse import urlparse
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
@@ -57,7 +62,24 @@ class EmbeddingEngine:
 
     def __init__(self, config: EmbeddingConfig):
         logger.info("Loading embedding model: %s", config.model_name)
-        self.model = SentenceTransformer(config.model_name, device=config.device)
+        cache_dir = Path(config.cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        local_files_only = _offline_requested() or _disable_dead_local_proxy()
+        model_name = config.model_name
+        if local_files_only:
+            model_name = _find_cached_sentence_transformer(config.model_name, cache_dir)
+
+        kwargs = {
+            "device": config.device,
+            "cache_folder": str(cache_dir),
+        }
+        if "local_files_only" in signature(SentenceTransformer.__init__).parameters:
+            kwargs["local_files_only"] = local_files_only
+        elif local_files_only:
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
+            os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+        self.model = SentenceTransformer(model_name, **kwargs)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a list of texts."""
@@ -82,10 +104,24 @@ class VectorStore:
     should prefer ``create_backend`` + ``EmbeddingEngine`` directly.
     """
 
-    def __init__(self, rag_config: RAGConfig, embedding_engine: EmbeddingEngine):
+    def __init__(
+        self,
+        rag_config: RAGConfig,
+        embedding_engine: EmbeddingEngine | None = None,
+        embedding_config: EmbeddingConfig | None = None,
+    ):
         self.config = rag_config
-        self.embedding_engine = embedding_engine
+        self._embedding_engine = embedding_engine
+        self._embedding_config = embedding_config
         self.backend: VectorStoreBackend = create_backend(rag_config)
+
+    @property
+    def embedding_engine(self) -> EmbeddingEngine:
+        if self._embedding_engine is None:
+            if self._embedding_config is None:
+                raise RuntimeError("Embedding configuration is required to load embeddings.")
+            self._embedding_engine = EmbeddingEngine(self._embedding_config)
+        return self._embedding_engine
 
     @property
     def count(self) -> int:
@@ -130,8 +166,7 @@ class RAGPipeline:
 
     def __init__(self, config: Config):
         self.config = config
-        self.embedding_engine = EmbeddingEngine(config.embedding)
-        self.vector_store = VectorStore(config.rag, self.embedding_engine)
+        self.vector_store = VectorStore(config.rag, embedding_config=config.embedding)
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=config.rag.chunk_size,
             chunk_overlap=config.rag.chunk_overlap,
@@ -189,3 +224,77 @@ class RAGPipeline:
     def is_populated(self) -> bool:
         """Check if the vector store has any documents."""
         return self.vector_store.count > 0
+
+
+def _offline_requested() -> bool:
+    """Return True when HuggingFace/transformers offline mode is requested."""
+    return any(
+        os.environ.get(name, "").lower() in {"1", "true", "yes", "on"}
+        for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
+    )
+
+
+def _disable_dead_local_proxy() -> bool:
+    """
+    Clear stale localhost proxy env vars and prefer local cached model files.
+
+    This prevents old container proxy settings such as http://127.0.0.1:13128
+    from breaking an otherwise cached/offline VM run.
+    """
+    proxy_vars = ("https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY")
+    for name in proxy_vars:
+        proxy_url = os.environ.get(name)
+        if not proxy_url:
+            continue
+
+        parsed = urlparse(proxy_url)
+        if parsed.hostname not in {"127.0.0.1", "localhost"} or parsed.port is None:
+            continue
+
+        try:
+            with socket.create_connection((parsed.hostname, parsed.port), timeout=0.25):
+                return False
+        except OSError:
+            for proxy_name in proxy_vars:
+                os.environ.pop(proxy_name, None)
+            logger.warning(
+                "Disabled stale localhost proxy %s; using cached HuggingFace files only.",
+                proxy_url,
+            )
+            return True
+
+    return False
+
+
+def _find_cached_sentence_transformer(model_name: str, cache_dir: Path) -> str:
+    """
+    Return a local sentence-transformers snapshot path when available.
+
+    Passing the snapshot path directly avoids HuggingFace metadata requests in
+    offline/proxy-constrained VM sessions.
+    """
+    model_names = [model_name]
+    if "/" not in model_name:
+        model_names.append(f"sentence-transformers/{model_name}")
+
+    cache_slugs = [f"models--{name.replace('/', '--')}" for name in model_names]
+    candidates = [
+        parent / cache_slug
+        for cache_slug in cache_slugs
+        for parent in (
+            cache_dir,
+            cache_dir / "hub",
+            Path.home() / ".cache" / "huggingface" / "hub",
+        )
+    ]
+
+    for base in candidates:
+        snapshots = base / "snapshots"
+        if not snapshots.exists():
+            continue
+        for snapshot in sorted(snapshots.iterdir(), reverse=True):
+            if (snapshot / "modules.json").exists():
+                logger.info("Using cached embedding snapshot at %s", snapshot)
+                return str(snapshot)
+
+    return model_name

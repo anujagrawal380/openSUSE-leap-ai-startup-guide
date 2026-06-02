@@ -8,12 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY pyproject.toml .
+COPY pyproject.toml README.md .
 COPY opensuse_ai/ opensuse_ai/
 
 # Install deps into a venv for clean layering
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.4.1+cpu"
 RUN pip install --no-cache-dir .
 
 

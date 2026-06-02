@@ -27,6 +27,34 @@ from opensuse_ai.config import (
 
 console = Console()
 
+EXIT_COMMANDS = {
+    "quit",
+    "exit",
+    "q",
+    "close",
+    "stop",
+    "bye",
+    "/quit",
+    "/exit",
+    ":q",
+}
+
+SHELL_COMMAND_PREFIXES = (
+    "podman ",
+    "docker ",
+    "ssh ",
+    "scp ",
+    "ls ",
+    "cd ",
+    "cat ",
+    "grep ",
+    "find ",
+    "curl ",
+    "zypper ",
+    "python ",
+    "python3 ",
+)
+
 
 def setup_logging(level: str) -> None:
     logging.basicConfig(
@@ -116,20 +144,29 @@ def chat(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
         if not user_input:
             continue
 
-        if user_input.lower() in ("quit", "exit", "q"):
+        normalized_input = user_input.lower().strip(" .!")
+
+        if normalized_input in EXIT_COMMANDS:
             console.print("[dim]Goodbye![/dim]")
             break
 
-        if user_input.lower() == "reset":
+        if _looks_like_shell_command(user_input):
+            console.print(
+                "[yellow]That looks like a shell command.[/yellow] "
+                "Type [bold]quit[/bold] first, then run it at the VM shell prompt.",
+            )
+            continue
+
+        if normalized_input == "reset":
             assistant.reset_conversation()
             console.print("[dim]Conversation history cleared.[/dim]")
             continue
 
-        if user_input.lower() == "topics":
+        if normalized_input == "topics":
             _show_topics()
             continue
 
-        if user_input.lower().startswith("topic "):
+        if normalized_input.startswith("topic "):
             topic_key = user_input[6:].strip().lower().replace(" ", "_")
             from opensuse_ai.assistant import ONBOARDING_TOPICS
 
@@ -170,6 +207,13 @@ def chat(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
             f"[dim]⏱ {response.generation_time_ms:.0f}ms · {response.tokens_used} tokens[/dim]"
         )
         console.print()
+
+
+def _looks_like_shell_command(text: str) -> bool:
+    """Detect common pasted shell commands so they are not sent to the LLM."""
+    stripped = text.strip()
+    lowered = stripped.lower()
+    return lowered.startswith(SHELL_COMMAND_PREFIXES) or lowered.startswith(("./", "../"))
 
 
 def _show_topics() -> None:

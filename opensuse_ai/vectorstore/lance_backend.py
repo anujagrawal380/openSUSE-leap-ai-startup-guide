@@ -31,14 +31,24 @@ class LanceBackend(VectorStoreBackend):
         self.db = lancedb.connect(str(persist_dir))
         self._table = None
 
-        # Try to open an existing table
-        if self._table_name in self.db.list_tables():
+        # Try to open an existing table. LanceDB has returned both a plain
+        # list and a paginated object with a ``tables`` attribute across
+        # versions, so normalize before checking.
+        table_names = self._list_table_names()
+        if self._table_name in table_names:
             self._table = self.db.open_table(self._table_name)
             logger.info(
                 "Opened existing LanceDB table '%s' (%d rows)",
                 self._table_name,
                 self._table.count_rows(),
             )
+
+    def _list_table_names(self) -> list[str]:
+        """Return existing table names across LanceDB API versions."""
+        result = self.db.list_tables()
+        if hasattr(result, "tables"):
+            return list(result.tables)
+        return list(result)
 
     def _create_table(self, vector_dim: int) -> None:
         """Create the LanceDB table with the correct schema."""

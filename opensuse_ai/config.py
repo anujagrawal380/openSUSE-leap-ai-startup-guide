@@ -119,6 +119,7 @@ class EmbeddingConfig:
 
     model_name: str = "all-MiniLM-L6-v2"
     device: str = "cpu"
+    cache_dir: str = "./data/models/embeddings"
 
 
 @dataclass

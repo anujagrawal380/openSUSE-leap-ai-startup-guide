@@ -11,7 +11,8 @@ pyyaml>=6.0
 psutil>=5.9.0
 
 # RAG pipeline (embeddings + vector DB)
-sentence-transformers>=2.5.0
+sentence-transformers>=2.5.0,<3.0
+transformers>=4.41.0,<5.0
 chromadb>=0.4.22
 lancedb>=0.6.0
 
