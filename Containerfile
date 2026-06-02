@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir .
 # ---- Stage 2: Runtime ----
 FROM python:3.11-slim AS runtime
 
-# Minimal runtime deps
+# Minimal runtime deps (libgomp for llama.cpp OpenMP support)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
@@ -42,13 +42,16 @@ COPY config.yaml .
 RUN mkdir -p /app/data && chown -R suseai:suseai /app/data
 VOLUME ["/app/data"]
 
+# Expose Gradio web UI port
+EXPOSE 7860
+
 USER suseai
 
 # Resource limits guidance (enforced via docker run --memory / --cpus)
 LABEL org.opencontainers.image.title="openSUSE Leap AI Startup Guide"
-LABEL org.opencontainers.image.description="Containerized AI startup guide for openSUSE Leap"
+LABEL org.opencontainers.image.description="Containerized AI startup guide for openSUSE Leap (Qwen3 + LanceDB)"
 LABEL org.opencontainers.image.source="https://github.com/anujagrawal380/opensuse-leap-ai-guide"
-LABEL ai.resource.memory.recommended="4Gi"
+LABEL ai.resource.memory.recommended="6Gi"
 LABEL ai.resource.cpu.recommended="4"
 
 ENTRYPOINT ["suse-assist"]

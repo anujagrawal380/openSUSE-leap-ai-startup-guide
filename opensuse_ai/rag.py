@@ -1,22 +1,56 @@
 """
 RAG (Retrieval-Augmented Generation) pipeline for the openSUSE AI assistant.
 
-Handles document chunking, embedding, vector storage (ChromaDB),
+Handles document chunking, embedding, vector storage,
 and context retrieval for grounding LLM responses in official documentation.
+
+Supports pluggable vector store backends (ChromaDB, LanceDB) via the
+``opensuse_ai.vectorstore`` package.
 """
 
 import logging
-from pathlib import Path
 
-import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
 from opensuse_ai.config import Config, EmbeddingConfig, RAGConfig
 from opensuse_ai.scraper import ScrapedPage
+from opensuse_ai.vectorstore.base import VectorStoreBackend
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Backend factory
+# ---------------------------------------------------------------------------
+
+def create_backend(rag_config: RAGConfig) -> VectorStoreBackend:
+    """
+    Instantiate the correct vector store backend based on ``rag_config.backend``.
+
+    Supported values: ``"chroma"``, ``"lancedb"``.
+    """
+    backend = rag_config.backend.lower()
+
+    if backend == "chroma":
+        from opensuse_ai.vectorstore.chroma_backend import ChromaBackend
+
+        return ChromaBackend(rag_config)
+
+    if backend == "lancedb":
+        from opensuse_ai.vectorstore.lance_backend import LanceBackend
+
+        return LanceBackend(rag_config)
+
+    raise ValueError(
+        f"Unknown vector store backend '{rag_config.backend}'. "
+        f"Expected one of: chroma, lancedb"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Embedding engine (unchanged — stays in rag.py)
+# ---------------------------------------------------------------------------
 
 class EmbeddingEngine:
     """Wraps sentence-transformers for generating embeddings."""
@@ -35,34 +69,34 @@ class EmbeddingEngine:
         return self.model.encode(query, normalize_embeddings=True).tolist()
 
 
+# ---------------------------------------------------------------------------
+# VectorStore — thin adapter that owns an EmbeddingEngine + a backend
+# ---------------------------------------------------------------------------
+
 class VectorStore:
-    """ChromaDB-backed vector store for document chunks."""
+    """
+    High-level vector store that pairs an embedding engine with a
+    pluggable storage backend.
+
+    Kept for backward compatibility with existing call-sites; new code
+    should prefer ``create_backend`` + ``EmbeddingEngine`` directly.
+    """
 
     def __init__(self, rag_config: RAGConfig, embedding_engine: EmbeddingEngine):
         self.config = rag_config
         self.embedding_engine = embedding_engine
-
-        persist_dir = Path(rag_config.persist_directory)
-        persist_dir.mkdir(parents=True, exist_ok=True)
-
-        self.client = chromadb.PersistentClient(
-            path=str(persist_dir),
-        )
-
-        self.collection = self.client.get_or_create_collection(
-            name=rag_config.collection_name,
-            metadata={"hnsw:space": "cosine"},
-        )
+        self.backend: VectorStoreBackend = create_backend(rag_config)
 
     @property
     def count(self) -> int:
-        return self.collection.count()
+        return self.backend.count
 
     def add_documents(self, chunks: list[dict]) -> None:
         """
         Add document chunks to the vector store.
 
         Each chunk is a dict with keys: id, text, metadata.
+        Embeddings are computed internally and forwarded to the backend.
         """
         if not chunks:
             return
@@ -70,18 +104,9 @@ class VectorStore:
         batch_size = 100
         for i in range(0, len(chunks), batch_size):
             batch = chunks[i : i + batch_size]
-            ids = [c["id"] for c in batch]
             texts = [c["text"] for c in batch]
-            metadatas = [c["metadata"] for c in batch]
             embeddings = self.embedding_engine.embed(texts)
-
-            self.collection.add(
-                ids=ids,
-                documents=texts,
-                metadatas=metadatas,
-                embeddings=embeddings,
-            )
-            logger.info("Indexed batch %d-%d (%d chunks)", i, i + len(batch), len(batch))
+            self.backend.add_documents(batch, embeddings)
 
     def query(self, query_text: str, top_k: int | None = None) -> list[dict]:
         """
@@ -91,27 +116,12 @@ class VectorStore:
         """
         k = top_k or self.config.top_k
         query_embedding = self.embedding_engine.embed_query(query_text)
+        return self.backend.query(query_embedding, k)
 
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=k,
-            include=["documents", "metadatas", "distances"],
-        )
 
-        retrieved = []
-        for doc, meta, dist in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
-        ):
-            retrieved.append({
-                "text": doc,
-                "metadata": meta,
-                "distance": dist,
-            })
-
-        return retrieved
-
+# ---------------------------------------------------------------------------
+# RAG pipeline
+# ---------------------------------------------------------------------------
 
 class RAGPipeline:
     """

@@ -11,14 +11,14 @@ def test_default_config():
     assert cfg.model.tier == "test"
     assert cfg.model.repo_id == "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
     assert cfg.rag.chunk_size == 500
-    assert cfg.rag.top_k == 2
+    assert cfg.rag.top_k == 4
     assert len(cfg.doc_sources) > 0
 
 
 def test_config_from_missing_yaml(tmp_path: Path):
     """Loading a non-existent YAML should return defaults."""
     cfg = Config.from_yaml(tmp_path / "nonexistent.yaml")
-    assert cfg.model.n_ctx == 2048
+    assert cfg.model.n_ctx == 32768
 
 
 def test_config_from_yaml(tmp_path: Path):

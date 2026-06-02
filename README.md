@@ -24,16 +24,17 @@ The assistant supports two inference backends, configurable via `config.yaml` or
 
 | Mode | Backend | Use Case | Dependencies |
 |------|---------|----------|--------------|
-| **`local`** (default) | `llama-cpp-python` (TinyLlama 1.1B GGUF) | CLI, containers, fully offline & private | `llama-cpp-python`, C++ toolchain |
-| **`api`** | HuggingFace Inference API (Zephyr 7B) | HF Spaces, lightweight cloud deployment | `huggingface-hub` (no compilation) |
+| **`local`** (default) | `llama-cpp-python` (Qwen3 family, GGUF) | CLI, containers, fully offline & private | `llama-cpp-python`, C++ toolchain |
+| **`api`** | HuggingFace Inference API (Qwen3-235B-A22B) | HF Spaces, lightweight cloud deployment | `huggingface-hub` (no compilation) |
 
-Both modes use the **same RAG pipeline** (ChromaDB + MiniLM embeddings) for document retrieval — only the LLM generation step differs.
+Both modes use the **same RAG pipeline** (LanceDB + MiniLM embeddings) for document retrieval — only the LLM generation step differs.
 
 Set via `config.yaml`:
 ```yaml
 model:
   inference_mode: "local"   # or "api"
-  api_model_id: "HuggingFaceH4/zephyr-7b-beta"  # used in api mode
+  tier: "standard"          # auto-selects Qwen3-4B for local mode
+  api_model_id: "Qwen/Qwen3-235B-A22B"  # used in api mode
 ```
 
 Or in code (as done in `app.py` for HF Spaces):
@@ -53,13 +54,13 @@ config.model.inference_mode = "api"
 │                                                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
 │  │   Assistant  │  │ RAG Pipeline │  │ System Context│  │
-│  │   Engine     │◄─┤  (ChromaDB)  │  │  Detector     │  │
+│  │   Engine     │◄─┤  (LanceDB)   │  │  Detector     │  │
 │  │  (dual mode) │  │              │  │               │  │
 │  │              │  │  Embeddings  │  │  OS signals   │  │
 │  │    local:    │  │  MiniLM-L6   │  │  zypper/YaST  │  │
-│  │  TinyLlama   │  │              │  │               │  │
-│  │  1.1B (GGUF) │  │              │  │               │  │ 
-│  │ api: HF API  │  │              │  │               │  │
+│  │  Qwen3 (GGUF)│  │              │  │               │  │
+│  │    api:      │  │              │  │               │  │ 
+│  │  HF Inf. API │  │              │  │               │  │
 │  └──────────────┘  └──────┬───────┘  └───────────────┘  │
 │                           │                             │
 │                    ┌──────┴───────┐                     │
@@ -78,10 +79,11 @@ config.model.inference_mode = "api"
 
 | Decision | Rationale |
 |----------|-----------|
-| **TinyLlama 1.1B (Q4 GGUF)** | ~700MB RAM, runs on laptops, good quality for guided Q&A |
+| **Qwen3 model family** | Apache 2.0, 1.7B/4B/8B ladder, non-thinking, strong multilingual, mature GGUF support |
+| **Qwen3-4B-Instruct-2507 (default)** | ~2.5GB Q4, 256K native context, no `<think>` output, strong instruction following |
 | **Dual inference mode** | `local` (llama-cpp-python) for offline/CLI, `api` (HF Inference API) for cloud/Spaces |
 | **HF Inference API for Spaces** | Eliminates C++ compilation and large model downloads in cloud builds |
-| **ChromaDB** | Embedded vector DB, no external service needed |
+| **LanceDB** | Embedded vector DB, local filesystem, Apache 2.0, Lance/Arrow format, no daemon |
 | **sentence-transformers (MiniLM)** | Fast, lightweight embeddings (~80MB model) |
 | **System context detection** | Makes responses openSUSE-specific, not generic Linux |
 | **Multi-stage Containerfile** | Small image, non-root user, security hardened |
@@ -210,7 +212,7 @@ The assistant includes pre-built onboarding flows accessible via `topic <name>`:
 ## Future Work
 
 - **Installer integration**: Hook into YaST firstboot module or linuxrc
-- **Model upgrades**: Evaluate Phi-3.5 Mini, Qwen2.5 3B, Mistral 7B (see [docs/llm-comparison.md](docs/llm-comparison.md))
+- **MCP integration**: Model Context Protocol servers for system context, docs, and onboarding flows
 - **Snapper integration**: Context-aware rollback guidance
 - **Offline RPM packaging**: Package as an openSUSE RPM with bundled model
 - **Security hardening**: Sandboxed execution, prompt injection defenses

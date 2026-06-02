@@ -101,15 +101,16 @@ class ModelConfig:
     repo_id: str = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
     filename: str = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
     # HF Inference API model (api mode) — used when inference_mode="api"
-    api_model_id: str = "Qwen/Qwen2.5-72B-Instruct"
-    # Inference parameters
-    n_ctx: int = 2048  # context window (matches TinyLlama training window)
+    api_model_id: str = "Qwen/Qwen3-235B-A22B"
+    # Inference parameters — tuned for Qwen3 family.
+    # TinyLlama (test tier) overrides n_ctx/max_tokens via apply_model_tier().
+    n_ctx: int = 32768
     n_threads: int = 4
     n_gpu_layers: int = -1  # -1 = offload all layers to GPU (Metal on macOS, CUDA on Linux)
     temperature: float = 0.4
-    max_tokens: int = 350
+    max_tokens: int = 700
     top_p: float = 0.9
-    repeat_penalty: float = 1.3
+    repeat_penalty: float = 1.1
 
 
 @dataclass
@@ -126,9 +127,10 @@ class RAGConfig:
 
     chunk_size: int = 500
     chunk_overlap: int = 100
-    top_k: int = 2  # number of retrieved chunks per query (keep small for 1.1B model)
+    top_k: int = 4  # number of retrieved chunks per query
     collection_name: str = "opensuse_docs"
     persist_directory: str = "./data/vectorstore"
+    backend: str = "chroma"  # "chroma" or "lancedb"
 
 
 @dataclass

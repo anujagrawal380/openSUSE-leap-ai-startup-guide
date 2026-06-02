@@ -6,14 +6,16 @@ services:
     container_name: opensuse-leap-ai-guide
     volumes:
       - model-data:/app/data
-    # Resource constraints — matches project requirement for evaluation
+    ports:
+      - "7860:7860"
+    # Resource constraints — tuned for Qwen3-4B (standard tier)
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 6G
           cpus: "4"
         reservations:
-          memory: 2G
+          memory: 3G
           cpus: "2"
     # Interactive terminal for CLI
     stdin_open: true
@@ -24,6 +26,13 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    # Health check for the Gradio web UI
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   model-data:

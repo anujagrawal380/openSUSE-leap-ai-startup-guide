@@ -1,0 +1,44 @@
+[Unit]
+Description=openSUSE AI Onboarding Assistant
+Documentation=https://github.com/anujagrawal380/opensuse-leap-ai-guide
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_USER__
+WorkingDirectory=__APP_DIR__
+
+# Environment
+Environment=PATH=__VENV_DIR__/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+
+# Run the Gradio web UI
+ExecStart=__VENV_DIR__/bin/suse-assist \
+    --config __APP_DIR__/config-vm.yaml \
+    web --demo --port 7860
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=__DATA_DIR__
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+# Resource limits — adjust based on VM specs
+MemoryMax=6G
+CPUQuota=400%
+
+[Install]
+WantedBy=multi-user.target

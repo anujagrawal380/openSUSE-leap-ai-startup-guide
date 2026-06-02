@@ -13,6 +13,7 @@ psutil>=5.9.0
 # RAG pipeline (embeddings + vector DB)
 sentence-transformers>=2.5.0
 chromadb>=0.4.22
+lancedb>=0.6.0
 
 # LLM orchestration
 langchain>=0.1.0

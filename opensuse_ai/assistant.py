@@ -31,8 +31,15 @@ logger = logging.getLogger(__name__)
 
 # System prompt that defines the assistant's persona and capabilities
 SYSTEM_PROMPT = """\
-You are an openSUSE Leap assistant. Give concise, accurate answers about openSUSE. \
-Use zypper for packages, YaST for system admin. Be helpful and brief.
+You are an AI onboarding assistant for openSUSE Leap Linux. Your role is to help \
+new users learn and configure their openSUSE system.
+
+Guidelines:
+- Give concise, accurate answers grounded in the documentation provided below.
+- Recommend zypper for package management and YaST for system administration.
+- When citing documentation, mention the source title.
+- If the documentation does not cover a topic, say so honestly rather than guessing.
+- Keep answers focused and practical. Prefer concrete commands and examples.
 
 {system_context}
 
@@ -200,16 +207,18 @@ class Assistant:
 
         messages = [{"role": "system", "content": system_message}]
 
-        # Add conversation history (keep last 2 turns)
-        for msg in self.conversation_history[-2:]:
+        # Add conversation history (keep last 6 turns for Qwen3's larger context)
+        for msg in self.conversation_history[-6:]:
             messages.append(msg)
 
         messages.append({"role": "user", "content": question})
 
         # 4. Truncate if prompt is too long for context window
-        #    Rough estimate: 1 token ≈ 4 chars
+        #    Rough estimate: 1 token ≈ 4 chars.
+        #    Reserve space for generation (max_tokens) plus a safety margin.
         max_prompt_chars = (self.config.model.n_ctx - self.config.model.max_tokens) * 4
         total_chars = sum(len(m["content"]) for m in messages)
+        # Drop oldest history messages first, but always keep system + user
         while total_chars > max_prompt_chars and len(messages) > 2:
             messages.pop(1)
             total_chars = sum(len(m["content"]) for m in messages)
