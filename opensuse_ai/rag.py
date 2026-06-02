@@ -181,10 +181,20 @@ class RAGPipeline:
         """
         all_chunks = []
         chunk_id = 0
+        seen_texts: set[str] = set()
+        duplicates = 0
 
         for page in pages:
             texts = self.splitter.split_text(page.content)
             for i, text in enumerate(texts):
+                # openSUSE book index/part/chapter pages nest the same content,
+                # so the crawler yields many identical chunks. Drop exact dupes
+                # to keep the store lean and avoid repeated retrieval citations.
+                key = text.strip()
+                if key in seen_texts:
+                    duplicates += 1
+                    continue
+                seen_texts.add(key)
                 all_chunks.append({
                     "id": f"doc_{chunk_id}",
                     "text": text,
@@ -196,6 +206,9 @@ class RAGPipeline:
                     },
                 })
                 chunk_id += 1
+
+        if duplicates:
+            logger.info("Skipped %d duplicate chunks", duplicates)
 
         logger.info("Created %d chunks from %d pages", len(all_chunks), len(pages))
         self.vector_store.add_documents(all_chunks)

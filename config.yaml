@@ -32,7 +32,7 @@ embedding:
 rag:
   chunk_size: 500
   chunk_overlap: 100
-  top_k: 4
+  top_k: 8
   collection_name: "opensuse_docs"
   persist_directory: "./data/vectorstore"
   backend: "lancedb"

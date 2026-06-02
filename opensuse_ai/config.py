@@ -128,7 +128,7 @@ class RAGConfig:
 
     chunk_size: int = 500
     chunk_overlap: int = 100
-    top_k: int = 4  # number of retrieved chunks per query
+    top_k: int = 8  # number of retrieved chunks per query
     collection_name: str = "opensuse_docs"
     persist_directory: str = "./data/vectorstore"
     backend: str = "chroma"  # "chroma" or "lancedb"
@@ -154,9 +154,13 @@ class Config:
     data_dir: str = "./data"
     log_level: str = "INFO"
     doc_sources: list[DocumentationSource] = field(default_factory=lambda: [
+        # base_url is pinned to the exact current book path so the crawler stays
+        # within one book and the current version. A broad base_url lets the
+        # version switcher and cross-book links pull in archive/15.x copies and
+        # unrelated books, bloating the index with duplicates.
         DocumentationSource(
             name="openSUSE Leap Startup Guide",
-            base_url="https://doc.opensuse.org",
+            base_url="https://doc.opensuse.org/documentation/leap/startup/html/book-startup/",
             start_urls=[
                 "https://doc.opensuse.org/documentation/leap/startup/html/book-startup/index.html",
             ],
@@ -164,11 +168,22 @@ class Config:
         ),
         DocumentationSource(
             name="openSUSE Leap Reference",
-            base_url="https://doc.opensuse.org",
+            base_url="https://doc.opensuse.org/documentation/leap/reference/html/book-reference/",
             start_urls=[
                 "https://doc.opensuse.org/documentation/leap/reference/html/book-reference/index.html",
             ],
             max_pages=150,
+        ),
+        # Leap 16.0 has no Startup/Reference manuals yet; the Release Notes are
+        # the authoritative 16.0-specific source (SELinux default, YaST/Xorg
+        # removal, Wayland, PipeWire, NetworkManager, Agama installer).
+        DocumentationSource(
+            name="openSUSE Leap 16.0 Release Notes",
+            base_url="https://doc.opensuse.org/release-notes/x86_64/openSUSE/Leap/16.0/",
+            start_urls=[
+                "https://doc.opensuse.org/release-notes/x86_64/openSUSE/Leap/16.0/html/release-notes-leap-160/",
+            ],
+            max_pages=30,
         ),
     ])
 
