@@ -88,7 +88,11 @@ class EmbeddingEngine:
 
     def embed_query(self, query: str) -> list[float]:
         """Generate embedding for a single query."""
-        return self.model.encode(query, normalize_embeddings=True).tolist()
+        # show_progress_bar=False: sentence-transformers otherwise auto-shows a
+        # "Batches" bar at INFO log level, spamming every chat turn.
+        return self.model.encode(
+            query, normalize_embeddings=True, show_progress_bar=False
+        ).tolist()
 
 
 # ---------------------------------------------------------------------------

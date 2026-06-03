@@ -11,6 +11,7 @@ Supports two inference modes:
 
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -188,6 +189,19 @@ class Assistant:
         rag_context = "No documentation indexed yet."
         if self.rag.is_populated:
             rag_results = self.rag.retrieve(question)
+            # Budget retrieved context to the model window (1 token ≈ 4 chars).
+            # Reserve room for generation plus question/history/scaffolding,
+            # then drop the lowest-ranked chunks until the context fits. Small
+            # windows (test tier: 2048) otherwise overflow with top_k=8.
+            budget_chars = max(
+                800,
+                (self.config.model.n_ctx - self.config.model.max_tokens - 700) * 4,
+            )
+            while (
+                len(self.rag.format_context(rag_results)) > budget_chars
+                and len(rag_results) > 1
+            ):
+                rag_results = rag_results[:-1]
             rag_context = self.rag.format_context(rag_results)
 
         # 2. Build system context string
@@ -211,7 +225,18 @@ class Assistant:
         for msg in self.conversation_history[-6:]:
             messages.append(msg)
 
-        messages.append({"role": "user", "content": question})
+        # Qwen3 hybrid-thinking models (1.7B/8B; not the 2507 instruct builds)
+        # default to chain-of-thought rambling. The "/no_think" soft switch in
+        # the latest user turn disables it. Harmless no-op for other models.
+        question_for_prompt = question
+        if (
+            self.inference_mode == "local"
+            and "qwen3" in self.config.model.repo_id.lower()
+            and "2507" not in self.config.model.filename.lower()
+        ):
+            question_for_prompt = f"{question} /no_think"
+
+        messages.append({"role": "user", "content": question_for_prompt})
 
         # 4. Truncate if prompt is too long for context window
         #    Rough estimate: 1 token ≈ 4 chars.
@@ -232,6 +257,11 @@ class Assistant:
             answer_text, tokens_used = self._generate_local(messages)
 
         generation_time = (time.perf_counter() - start_time) * 1000
+
+        # Strip (possibly empty) <think> blocks emitted by thinking models.
+        answer_text = re.sub(
+            r"<think>.*?</think>", "", answer_text, flags=re.DOTALL
+        ).strip()
 
         # 6. Update conversation history
         self.conversation_history.append({"role": "user", "content": question})

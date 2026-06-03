@@ -105,8 +105,8 @@ config.model.inference_mode = "api"
 
 ```bash
 # Clone and install
-git clone https://github.com/anujagrawal380/opensuse-leap-ai-guide.git
-cd opensuse-leap-ai-guide
+git clone https://github.com/anujagrawal380/openSUSE-leap-ai-startup-guide.git
+cd openSUSE-leap-ai-startup-guide
 
 # Create virtual environment
 python -m venv .venv
@@ -141,6 +141,40 @@ podman run -it --rm \
   opensuse-ai-assistant chat --demo
 ```
 
+### Containerized deployment on an openSUSE host (real system context)
+
+The container base image is not openSUSE, so by default system context detection
+reports the container, not the host. Mount the host root read-only and set
+`SUSE_AI_HOST_ROOT` to detect the real host (distro, package manager, disk):
+
+```bash
+podman run -d --name opensuse-ai-guide --network=host \
+  -v opensuse-ai-data:/app/data \
+  -v /:/host:ro \
+  -e SUSE_AI_HOST_ROOT=/host \
+  -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
+  opensuse-ai-assistant web --model-tier standard --port 7860
+```
+
+Notes:
+- `HF_HUB_OFFLINE=1` runs fully offline once the GGUF model, the MiniLM embedding
+  snapshot (`data/models/embeddings/`), and the vector store are present in the
+  data volume. Build the store on a networked machine with
+  `scripts/local_ingest.py` and copy `data/vectorstore/` over if the host has no
+  internet access.
+- Pending-update and failed-service detection require running `zypper`/`systemctl`
+  on the host, so they are skipped in containerized mode; a native (non-container)
+  install reports them.
+
+### Documentation sources
+
+The RAG index is built from official openSUSE documentation
+(see `doc_sources` in `config.py`):
+
+- openSUSE Leap Startup Guide (current = 15.6)
+- openSUSE Leap Reference (current = 15.6)
+- openSUSE Leap 16.0 Release Notes (the only 16.0-specific manual published so far)
+
 ### Available Commands
 
 ```bash
@@ -152,28 +186,37 @@ suse-assist sysinfo    # Show detected system context
 suse-assist models recommend  # Recommend a local model tier based on RAM
 ```
 
-All commands support `--demo` to simulate an openSUSE Leap environment on non-openSUSE machines.
-`chat`, `web`, and `benchmark` also support `--model-tier auto|test|lite|standard|full|custom`.
+`chat`, `web`, and `benchmark` support `--demo` to simulate an openSUSE Leap environment on
+non-openSUSE machines (`sysinfo` always shows the real detected context), and
+`--model-tier auto|test|lite|standard|full|custom` to pick the local model.
 
 ## Project Structure
 
 ```
 opensuse_ai/
 ├── __init__.py
-├── config.py           # Centralized configuration (YAML + dataclasses)
+├── config.py           # Centralized configuration (YAML + dataclasses, model tiers, doc sources)
 ├── scraper.py          # Documentation crawler for doc.opensuse.org
-├── rag.py              # RAG pipeline: chunking, embedding, retrieval
+├── rag.py              # RAG pipeline: chunking, dedup, embedding, retrieval
 ├── assistant.py        # LLM engine: dual-mode (local llama-cpp / HF Inference API)
 ├── system_context.py   # OS-level context detection (zypper, systemd, etc.)
 ├── benchmark.py        # Performance measurement and reporting
 ├── cli.py              # Rich-powered CLI interface
-└── web_ui.py           # Gradio web UI
+├── web_ui.py           # Gradio web UI
+└── vectorstore/        # Pluggable vector store backends
+    ├── base.py         # Backend interface
+    ├── chroma_backend.py
+    └── lance_backend.py
+
+scripts/
+└── local_ingest.py     # Build the vector store on a networked host (for offline VMs)
 
 tests/
 ├── test_config.py
 ├── test_scraper.py
 ├── test_system_context.py
-└── test_rag.py
+├── test_rag.py
+└── test_vectorstore_backends.py
 
 docs/
 ├── llm-comparison.md   # Original comparison of candidate LLMs

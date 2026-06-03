@@ -126,8 +126,8 @@ class EmbeddingConfig:
 class RAGConfig:
     """Retrieval-Augmented Generation pipeline settings."""
 
-    chunk_size: int = 500
-    chunk_overlap: int = 100
+    chunk_size: int = 900  # larger chunks keep release-note facts intact
+    chunk_overlap: int = 150
     top_k: int = 8  # number of retrieved chunks per query
     collection_name: str = "opensuse_docs"
     persist_directory: str = "./data/vectorstore"

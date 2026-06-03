@@ -30,8 +30,8 @@ embedding:
   device: "cpu"
 
 rag:
-  chunk_size: 500
-  chunk_overlap: 100
+  chunk_size: 900
+  chunk_overlap: 150
   top_k: 8
   collection_name: "opensuse_docs"
   persist_directory: "./data/vectorstore"
