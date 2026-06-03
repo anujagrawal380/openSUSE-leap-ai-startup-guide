@@ -1,7 +1,7 @@
 """
 Abstract base class for vector store backends.
 
-All backends (ChromaDB, LanceDB, etc.) implement this interface so
+All backends (LanceDB, etc.) implement this interface so
 the RAG pipeline can swap storage engines without changing its own logic.
 """
 

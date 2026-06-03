@@ -2,8 +2,7 @@
 LanceDB vector store backend.
 
 Uses the LanceDB columnar format for vector storage and retrieval.
-Provides a lightweight, embedded alternative to ChromaDB with efficient
-disk-based vector search.
+Lightweight, embedded, with efficient disk-based vector search.
 """
 
 import logging
@@ -68,7 +67,7 @@ class LanceBackend(VectorStoreBackend):
         """
         Add document chunks with pre-computed embeddings.
 
-        Batches inserts in groups of 100 for consistency with the ChromaDB backend.
+        Batches inserts in groups of 100.
         """
         if not chunks:
             return

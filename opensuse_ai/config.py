@@ -131,7 +131,7 @@ class RAGConfig:
     top_k: int = 8  # number of retrieved chunks per query
     collection_name: str = "opensuse_docs"
     persist_directory: str = "./data/vectorstore"
-    backend: str = "chroma"  # "chroma" or "lancedb"
+    backend: str = "lancedb"
 
 
 @dataclass

@@ -10,8 +10,9 @@ def test_default_config():
     cfg = Config()
     assert cfg.model.tier == "test"
     assert cfg.model.repo_id == "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
-    assert cfg.rag.chunk_size == 500
-    assert cfg.rag.top_k == 4
+    assert cfg.rag.chunk_size == 900
+    assert cfg.rag.top_k == 8
+    assert cfg.rag.backend == "lancedb"
     assert len(cfg.doc_sources) > 0
 
 

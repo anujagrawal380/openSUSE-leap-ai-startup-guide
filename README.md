@@ -203,9 +203,8 @@ opensuse_ai/
 ├── benchmark.py        # Performance measurement and reporting
 ├── cli.py              # Rich-powered CLI interface
 ├── web_ui.py           # Gradio web UI
-└── vectorstore/        # Pluggable vector store backends
+└── vectorstore/        # Vector store backend (LanceDB)
     ├── base.py         # Backend interface
-    ├── chroma_backend.py
     └── lance_backend.py
 
 scripts/

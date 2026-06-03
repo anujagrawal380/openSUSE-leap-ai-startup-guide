@@ -4,7 +4,7 @@ RAG (Retrieval-Augmented Generation) pipeline for the openSUSE AI assistant.
 Handles document chunking, embedding, vector storage,
 and context retrieval for grounding LLM responses in official documentation.
 
-Supports pluggable vector store backends (ChromaDB, LanceDB) via the
+Uses LanceDB as the vector store backend via the
 ``opensuse_ai.vectorstore`` package.
 """
 
@@ -31,16 +31,11 @@ logger = logging.getLogger(__name__)
 
 def create_backend(rag_config: RAGConfig) -> VectorStoreBackend:
     """
-    Instantiate the correct vector store backend based on ``rag_config.backend``.
+    Instantiate the vector store backend based on ``rag_config.backend``.
 
-    Supported values: ``"chroma"``, ``"lancedb"``.
+    Supported values: ``"lancedb"``.
     """
     backend = rag_config.backend.lower()
-
-    if backend == "chroma":
-        from opensuse_ai.vectorstore.chroma_backend import ChromaBackend
-
-        return ChromaBackend(rag_config)
 
     if backend == "lancedb":
         from opensuse_ai.vectorstore.lance_backend import LanceBackend
@@ -49,7 +44,7 @@ def create_backend(rag_config: RAGConfig) -> VectorStoreBackend:
 
     raise ValueError(
         f"Unknown vector store backend '{rag_config.backend}'. "
-        f"Expected one of: chroma, lancedb"
+        f"Expected one of: lancedb"
     )
 
 
