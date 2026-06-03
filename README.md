@@ -184,11 +184,35 @@ suse-assist ingest     # Scrape docs and build vector store
 suse-assist benchmark  # Run performance benchmarks
 suse-assist sysinfo    # Show detected system context
 suse-assist models recommend  # Recommend a local model tier based on RAM
+suse-assist mcp        # Run MCP server exposing tools over stdio
 ```
 
 `chat`, `web`, and `benchmark` support `--demo` to simulate an openSUSE Leap environment on
 non-openSUSE machines (`sysinfo` always shows the real detected context), and
 `--model-tier auto|test|lite|standard|full|custom` to pick the local model.
+
+### MCP server (Model Context Protocol)
+
+`suse-assist mcp` runs an MCP server over stdio that exposes two tools to any
+MCP-capable client (Claude Desktop, IDE agents, other LLM frontends):
+
+- `get_system_context` — live detection of the openSUSE system state
+  (distribution, kernel, filesystem + Snapper, GPU, network, firewall, …)
+- `search_docs` — semantic search over the indexed openSUSE documentation
+
+Requires the optional extra: `pip install -e ".[mcp]"`. Example Claude Desktop
+config entry:
+
+```json
+{
+  "mcpServers": {
+    "opensuse-onboarding": {
+      "command": "suse-assist",
+      "args": ["mcp"]
+    }
+  }
+}
+```
 
 ## Project Structure
 

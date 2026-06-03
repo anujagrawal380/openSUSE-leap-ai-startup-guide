@@ -339,6 +339,24 @@ def sysinfo(ctx: click.Context) -> None:
 
 
 @main.command()
+@click.pass_context
+def mcp(ctx: click.Context) -> None:
+    """Run the MCP server (stdio) exposing system context + doc search tools."""
+    cfg: Config = ctx.obj["config"]
+    # Logging must go to stderr only — stdout carries the MCP protocol stream.
+    logging.basicConfig(
+        level=getattr(logging, cfg.log_level.upper(), logging.INFO),
+        stream=sys.stderr,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    from opensuse_ai.mcp_server import serve
+
+    serve(cfg)
+
+
+@main.command()
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
 @click.option("--share", is_flag=True, help="Create a public Gradio share link")
 @click.option("--port", type=int, default=7860, help="Port for the web server")
