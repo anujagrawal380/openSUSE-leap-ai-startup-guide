@@ -200,8 +200,18 @@ MCP-capable client (Claude Desktop, IDE agents, other LLM frontends):
   (distribution, kernel, filesystem + Snapper, GPU, network, firewall, …)
 - `search_docs` — semantic search over the indexed openSUSE documentation
 
-Requires the optional extra: `pip install -e ".[mcp]"`. Example Claude Desktop
-config entry:
+The assistant also works as an MCP **client** (`suse-assist mcp-tools`),
+calling tools hosted by any external MCP server over stdio:
+
+```bash
+suse-assist mcp-tools list                                  # discover tools
+suse-assist mcp-tools call get_system_context               # call one
+suse-assist mcp-tools call search_docs --args '{"query": "snapper rollback"}'
+suse-assist mcp-tools list --command "some-other-mcp-server"  # third-party server
+```
+
+Both directions require the optional extra: `pip install -e ".[mcp]"`.
+Example Claude Desktop config entry:
 
 ```json
 {

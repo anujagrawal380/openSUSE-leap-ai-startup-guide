@@ -356,6 +356,56 @@ def mcp(ctx: click.Context) -> None:
     serve(cfg)
 
 
+@main.group("mcp-tools")
+def mcp_tools() -> None:
+    """Use the assistant as an MCP client against an external server."""
+
+
+@mcp_tools.command("list")
+@click.option(
+    "--command",
+    default=None,
+    help="MCP server command to spawn (default: our own 'suse-assist mcp')",
+)
+def mcp_tools_list(command: str | None) -> None:
+    """List tools exposed by an MCP server."""
+    from opensuse_ai.mcp_client import DEFAULT_SERVER_COMMAND, list_tools
+
+    server_command = command or DEFAULT_SERVER_COMMAND
+    tools = list_tools(server_command)
+
+    table = Table(title=f"MCP tools — {server_command}")
+    table.add_column("Tool", style="bold cyan")
+    table.add_column("Description")
+    for tool in tools:
+        table.add_row(tool["name"], tool["description"].split("\n")[0])
+    console.print(table)
+
+
+@mcp_tools.command("call")
+@click.argument("tool_name")
+@click.option("--args", "args_json", default="{}", help='Tool arguments as JSON, e.g. \'{"query": "snapper"}\'')
+@click.option(
+    "--command",
+    default=None,
+    help="MCP server command to spawn (default: our own 'suse-assist mcp')",
+)
+def mcp_tools_call(tool_name: str, args_json: str, command: str | None) -> None:
+    """Call TOOL_NAME on an MCP server and print the result."""
+    import json
+
+    from opensuse_ai.mcp_client import DEFAULT_SERVER_COMMAND, call_tool
+
+    try:
+        arguments = json.loads(args_json)
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(f"--args must be valid JSON: {exc}") from exc
+
+    server_command = command or DEFAULT_SERVER_COMMAND
+    result = call_tool(tool_name, arguments, server_command)
+    console.print(Panel(result, title=f"{tool_name} → {server_command}", border_style="cyan"))
+
+
 @main.command()
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
 @click.option("--share", is_flag=True, help="Create a public Gradio share link")
