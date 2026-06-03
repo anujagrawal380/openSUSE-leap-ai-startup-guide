@@ -15,7 +15,7 @@ COPY opensuse_ai/ opensuse_ai/
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.4.1+cpu"
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[mcp]"
 
 
 # ---- Stage 2: Runtime ----

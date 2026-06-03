@@ -15,6 +15,7 @@ Requires the optional dependency:  pip install 'opensuse-leap-ai-guide[mcp]'
 
 import asyncio
 import logging
+import os
 import shlex
 
 try:
@@ -33,8 +34,13 @@ DEFAULT_SERVER_COMMAND = "suse-assist mcp"
 
 
 def _server_params(command: str) -> StdioServerParameters:
+    # The MCP SDK spawns servers with a minimal environment by default,
+    # which would strip SUSE_AI_HOST_ROOT / HF_HUB_OFFLINE and break
+    # host-aware detection and offline mode. Inherit our environment.
     parts = shlex.split(command)
-    return StdioServerParameters(command=parts[0], args=parts[1:])
+    return StdioServerParameters(
+        command=parts[0], args=parts[1:], env=dict(os.environ)
+    )
 
 
 async def _with_session(command: str, fn):
