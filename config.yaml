@@ -36,6 +36,11 @@ rag:
   collection_name: "opensuse_docs"
   persist_directory: "./data/vectorstore"
   backend: "lancedb"
+  # Cross-encoder reranking (better relevance, slower; needs model cached
+  # locally for offline VMs). Falls back to vector order if unavailable.
+  rerank: false
+  rerank_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  rerank_candidates: 24
 
 data_dir: "./data"
 log_level: "INFO"

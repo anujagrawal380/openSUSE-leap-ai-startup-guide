@@ -132,6 +132,12 @@ class RAGConfig:
     collection_name: str = "opensuse_docs"
     persist_directory: str = "./data/vectorstore"
     backend: str = "lancedb"
+    # Optional cross-encoder reranking: retrieve rerank_candidates by vector
+    # similarity, rescore them with a cross-encoder, keep the top_k best.
+    # Off by default — adds latency and needs the model cached for offline use.
+    rerank: bool = False
+    rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_candidates: int = 24
 
 
 @dataclass
@@ -142,6 +148,11 @@ class DocumentationSource:
     base_url: str = ""
     start_urls: list[str] = field(default_factory=list)
     max_pages: int = 200
+    # "html" = crawl start_urls within base_url; "mediawiki" = fetch the
+    # curated ``pages`` list through the MediaWiki API at ``base_url``
+    # (the wiki blocks plain HTML scraping, the API is the supported path).
+    kind: str = "html"
+    pages: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -184,6 +195,23 @@ class Config:
                 "https://doc.opensuse.org/release-notes/x86_64/openSUSE/Leap/16.0/html/release-notes-leap-160/",
             ],
             max_pages=30,
+        ),
+        # Curated openSUSE wiki SDB articles covering common onboarding tasks
+        # the manuals don't (driver install, repo management, troubleshooting).
+        DocumentationSource(
+            name="openSUSE Wiki (SDB)",
+            base_url="https://en.opensuse.org/api.php",
+            kind="mediawiki",
+            pages=[
+                "SDB:Zypper_usage",
+                "SDB:System_upgrade",
+                "SDB:Offline_upgrade",
+                "SDB:Add_package_repositories",
+                "Package_repositories",
+                "SDB:Vendor_change_update",
+                "SDB:NVIDIA_drivers",
+                "SDB:Audio_troubleshooting",
+            ],
         ),
     ])
 

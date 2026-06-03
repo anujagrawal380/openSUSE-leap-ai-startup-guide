@@ -174,6 +174,13 @@ The RAG index is built from official openSUSE documentation
 - openSUSE Leap Startup Guide (current = 15.6)
 - openSUSE Leap Reference (current = 15.6)
 - openSUSE Leap 16.0 Release Notes (the only 16.0-specific manual published so far)
+- openSUSE Wiki SDB articles via the MediaWiki API (zypper usage, system
+  upgrade, repositories, NVIDIA drivers, audio troubleshooting, …) — the wiki
+  blocks HTML scraping, so these are fetched through `api.php`
+
+Retrieval is plain vector search by default; set `rag.rerank: true` in
+`config.yaml` to enable cross-encoder reranking (better relevance, slower,
+needs the reranker model cached for offline machines).
 
 ### Available Commands
 

@@ -171,6 +171,7 @@ class RAGPipeline:
             chunk_overlap=config.rag.chunk_overlap,
             separators=["\n\n", "\n", ". ", " ", ""],
         )
+        self._reranker = None  # lazy-loaded CrossEncoder when rerank is enabled
 
     def ingest(self, pages: list[ScrapedPage]) -> int:
         """
@@ -214,8 +215,44 @@ class RAGPipeline:
         return len(all_chunks)
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[dict]:
-        """Retrieve relevant context chunks for a user query."""
-        return self.vector_store.query(query, top_k=top_k)
+        """
+        Retrieve relevant context chunks for a user query.
+
+        With ``rag.rerank`` enabled, a wider candidate set is fetched by
+        vector similarity and rescored with a cross-encoder; the best
+        ``top_k`` survive. Falls back to plain vector search if the
+        reranker model cannot be loaded (e.g. offline without a cache).
+        """
+        k = top_k or self.config.rag.top_k
+        if not self.config.rag.rerank:
+            return self.vector_store.query(query, top_k=k)
+
+        candidates = self.vector_store.query(
+            query, top_k=max(k, self.config.rag.rerank_candidates)
+        )
+        reranker = self._get_reranker()
+        if reranker is None or len(candidates) <= k:
+            return candidates[:k]
+
+        scores = reranker.predict([(query, c["text"]) for c in candidates])
+        ranked = sorted(zip(scores, candidates), key=lambda p: p[0], reverse=True)
+        return [c for _, c in ranked[:k]]
+
+    def _get_reranker(self):
+        """Lazy-load the cross-encoder reranker; None when unavailable."""
+        if self._reranker is None:
+            try:
+                from sentence_transformers import CrossEncoder
+
+                self._reranker = CrossEncoder(
+                    self.config.rag.rerank_model,
+                    device=self.config.embedding.device,
+                )
+                logger.info("Loaded reranker: %s", self.config.rag.rerank_model)
+            except Exception as e:  # offline without cache, missing dep, ...
+                logger.warning("Reranker unavailable (%s); using vector order.", e)
+                self._reranker = False
+        return self._reranker or None
 
     def format_context(self, results: list[dict]) -> str:
         """Format retrieved chunks into a context string for the LLM."""
