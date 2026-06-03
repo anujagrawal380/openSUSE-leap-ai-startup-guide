@@ -27,6 +27,36 @@ def test_simulated_context_summary():
     assert "Memory" in summary
 
 
+def test_simulated_context_expanded_fields():
+    """Simulated context should carry the expanded detection fields."""
+    ctx = simulated_opensuse_context()
+    assert ctx.root_filesystem == "btrfs"
+    assert ctx.snapper_configured is True
+    assert ctx.gpu
+    assert ctx.locale
+    assert ctx.network_online is True
+    assert ctx.network_manager == "NetworkManager"
+    summary = ctx.summary()
+    assert "btrfs" in summary
+    assert "Snapper" in summary
+    assert "GPU" in summary
+    assert "Locale" in summary
+    assert "Network: online" in summary
+
+
+def test_summary_btrfs_without_snapper():
+    """Btrfs without Snapper should say so instead of advertising rollback."""
+    ctx = SystemContext(root_filesystem="btrfs", snapper_configured=False)
+    assert "Snapper not configured" in ctx.summary()
+
+
+def test_summary_installed_desktops_fallback():
+    """With no active session, installed DEs should appear in the summary."""
+    ctx = SystemContext(installed_desktops=["GNOME", "KDE Plasma"])
+    summary = ctx.summary()
+    assert "GNOME/KDE Plasma installed" in summary
+
+
 def test_detect_context_runs():
     """detect_system_context should not crash regardless of OS."""
     ctx = detect_system_context()
