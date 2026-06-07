@@ -77,12 +77,16 @@ class QualityScorer:
         answer: str,
         reference: str,
         expected_facts: list[str],
+        no_think: bool = False,
     ) -> tuple[int, str]:
         """
         Score an answer 1-5 with a local LLM judge.
 
-        ``judge_model`` is a loaded llama_cpp.Llama instance. Returns
-        (score, reason); falls back to a parsed integer or 1 on bad output.
+        ``judge_model`` is a loaded llama_cpp.Llama instance. ``no_think``
+        appends the Qwen3 "/no_think" soft switch so a hybrid-thinking judge
+        emits the verdict directly instead of spending the token budget inside
+        a <think> block (which would truncate before the JSON and score 1).
+        Returns (score, reason); falls back to a parsed integer or 1.
         """
         if not answer.strip():
             return 1, "empty answer"
@@ -94,13 +98,15 @@ class QualityScorer:
             f"ASSISTANT ANSWER:\n{answer}\n\n"
             "Return only the JSON object."
         )
+        if no_think:
+            user_prompt += " /no_think"
         try:
             resp = judge_model.create_chat_completion(
                 messages=[
                     {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
-                max_tokens=120,
+                max_tokens=256,
                 temperature=0.0,
             )
             text = resp["choices"][0]["message"]["content"]

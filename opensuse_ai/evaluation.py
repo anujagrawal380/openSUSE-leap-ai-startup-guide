@@ -17,8 +17,10 @@ model is resident at a time — important on the memory-constrained VM.
 
 import copy
 import gc
+import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 from opensuse_ai.config import Config
 from opensuse_ai.eval_dataset import EVAL_ITEMS, EvalItem
@@ -146,6 +148,13 @@ def score_results(
     judge_assistant.load_model()
     judge_model = judge_assistant._local_model
 
+    # Qwen3 hybrid-thinking judges (not the 2507 instruct builds) must be told
+    # /no_think or they exhaust the token budget inside <think> before the JSON.
+    judge_no_think = (
+        "qwen3" in judge_cfg.model.repo_id.lower()
+        and "2507" not in judge_cfg.model.filename.lower()
+    )
+
     for result in results:
         for rec in result.records:
             rec.similarity = scorer.similarity(rec.answer, rec.reference)
@@ -155,6 +164,7 @@ def score_results(
                 rec.answer,
                 rec.reference,
                 rec.expected_facts,
+                no_think=judge_no_think,
             )
             if progress:
                 progress(result.model_name, rec.query_id, rec.judge_score)
@@ -171,6 +181,30 @@ def score_results(
         result.avg_tokens_per_second = sum(r.tokens_per_second for r in recs) / n
 
 
+def save_answers(results: list[ModelEvalResult], path: Path) -> None:
+    """Persist generated answers (pre-scoring) so judging can be re-run."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = [
+        {"model_name": r.model_name, "repo_id": r.repo_id,
+         "records": [asdict(rec) for rec in r.records]}
+        for r in results
+    ]
+    path.write_text(json.dumps(payload, indent=2))
+
+
+def load_answers(path: Path) -> list[ModelEvalResult]:
+    """Load previously generated answers for a judge-only re-run."""
+    payload = json.loads(path.read_text())
+    results = []
+    for entry in payload:
+        result = ModelEvalResult(
+            model_name=entry["model_name"], repo_id=entry.get("repo_id", "")
+        )
+        result.records = [AnswerRecord(**rec) for rec in entry["records"]]
+        results.append(result)
+    return results
+
+
 def evaluate(
     config: Config,
     model_tiers: list[str],
@@ -179,13 +213,26 @@ def evaluate(
     items: list[EvalItem] | None = None,
     gen_progress=None,
     judge_progress=None,
+    answers_cache: Path | None = None,
+    reuse_answers: bool = False,
 ) -> list[ModelEvalResult]:
-    """Run the full two-phase evaluation and return per-model results."""
+    """
+    Run the two-phase evaluation and return per-model results.
+
+    If ``reuse_answers`` is set and ``answers_cache`` exists, the generation
+    phase is skipped and answers are loaded from disk — useful for iterating
+    on the judge without paying the (slow) generation cost again.
+    """
     items = items or EVAL_ITEMS
-    results = [
-        generate_answers(config, tier, items, system_context, gen_progress)
-        for tier in model_tiers
-    ]
+    if reuse_answers and answers_cache and answers_cache.exists():
+        results = load_answers(answers_cache)
+    else:
+        results = [
+            generate_answers(config, tier, items, system_context, gen_progress)
+            for tier in model_tiers
+        ]
+        if answers_cache:
+            save_answers(results, answers_cache)
     score_results(config, results, judge_tier, judge_progress)
     return results
 
@@ -213,4 +260,18 @@ def render_markdown(results: list[ModelEvalResult], judge_tier: str) -> str:
         "tok/s counts prompt + completion tokens (comparable across models, "
         "overstates pure generation speed)."
     )
+
+    # Per-query detail per model (judge score + one-line reason).
+    for r in sorted(results, key=lambda x: x.avg_judge_score, reverse=True):
+        lines.append("")
+        lines.append(f"## {r.model_name} — per-question detail")
+        lines.append("")
+        lines.append("| Question | Quality | Similarity | Judge reason |")
+        lines.append("|----------|---------|------------|--------------|")
+        for rec in r.records:
+            reason = rec.judge_reason.replace("|", "/").replace("\n", " ")[:100]
+            lines.append(
+                f"| {rec.query_id} | {rec.judge_score}/5 | "
+                f"{rec.similarity:.3f} | {reason} |"
+            )
     return "\n".join(lines)

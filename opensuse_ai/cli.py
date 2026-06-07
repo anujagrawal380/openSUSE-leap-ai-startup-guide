@@ -341,8 +341,15 @@ def benchmark(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
     help="Model tier used as the LLM judge (default: full = Qwen3-8B)",
 )
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
+@click.option(
+    "--reuse-answers",
+    is_flag=True,
+    help="Skip generation; re-judge cached answers from data/eval_answers.json",
+)
 @click.pass_context
-def eval(ctx: click.Context, models: str, judge_tier: str, demo: bool) -> None:
+def eval(
+    ctx: click.Context, models: str, judge_tier: str, demo: bool, reuse_answers: bool
+) -> None:
     """Compare models on answer quality (LLM judge + similarity) and latency."""
     cfg: Config = ctx.obj["config"]
     setup_logging(cfg.log_level)
@@ -374,6 +381,8 @@ def eval(ctx: click.Context, models: str, judge_tier: str, demo: bool) -> None:
         system_context=sys_ctx,
         gen_progress=gen_progress,
         judge_progress=judge_progress,
+        answers_cache=Path(cfg.data_dir) / "eval_answers.json",
+        reuse_answers=reuse_answers,
     )
 
     table = Table(title="Quality & Latency Evaluation")
