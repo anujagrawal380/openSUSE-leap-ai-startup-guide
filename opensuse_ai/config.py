@@ -69,6 +69,23 @@ MODEL_TIERS: dict[str, ModelTier] = {
 }
 
 
+# Alternative models for head-to-head benchmarking, kept out of the RAM-based
+# tier ladder so they never get auto-selected by recommend_model_tier(). Pick
+# them explicitly: `suse-assist eval --models standard,gemma3-4b`.
+EXTRA_MODELS: dict[str, ModelTier] = {
+    "gemma3-4b": ModelTier(
+        name="gemma3-4b",
+        label="Gemma 3 4B",
+        min_available_ram_gb=6.0,
+        repo_id="lmstudio-community/gemma-3-4b-it-GGUF",
+        filename="gemma-3-4b-it-Q4_K_M.gguf",
+        n_ctx=32768,
+        max_tokens=700,
+        description="Google Gemma 3 4B instruct — benchmark rival to Qwen3-4B standard.",
+    ),
+}
+
+
 def available_ram_gb() -> float:
     """Return currently available RAM in GiB, or 0 when it cannot be detected."""
     try:
@@ -210,6 +227,9 @@ class Config:
                 "Package_repositories",
                 "SDB:Vendor_change_update",
                 "SDB:NVIDIA_drivers",
+                "SDB:NVIDIA_SUSE_Prime",
+                "SDB:NVIDIA_troubleshooting",
+                "SDB:NVIDIA",
                 "SDB:Audio_troubleshooting",
             ],
         ),
@@ -234,11 +254,12 @@ class Config:
             self.model.tier = "custom"
             return "custom"
 
-        if tier_name not in MODEL_TIERS:
-            valid = ", ".join(["auto", "custom", *MODEL_TIERS])
+        all_models = {**MODEL_TIERS, **EXTRA_MODELS}
+        if tier_name not in all_models:
+            valid = ", ".join(["auto", "custom", *all_models])
             raise ValueError(f"Unknown model tier '{tier_name}'. Expected one of: {valid}")
 
-        tier = MODEL_TIERS[tier_name]
+        tier = all_models[tier_name]
         self.model.tier = tier_name
         self.model.repo_id = tier.repo_id
         self.model.filename = tier.filename

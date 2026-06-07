@@ -329,6 +329,77 @@ def benchmark(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
 
 
 @main.command()
+@click.option(
+    "--models",
+    default="standard,gemma3-4b",
+    help="Comma-separated tiers/models to compare (e.g. 'lite,standard,gemma3-4b')",
+)
+@click.option(
+    "--judge",
+    "judge_tier",
+    default="full",
+    help="Model tier used as the LLM judge (default: full = Qwen3-8B)",
+)
+@click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
+@click.pass_context
+def eval(ctx: click.Context, models: str, judge_tier: str, demo: bool) -> None:
+    """Compare models on answer quality (LLM judge + similarity) and latency."""
+    cfg: Config = ctx.obj["config"]
+    setup_logging(cfg.log_level)
+
+    from opensuse_ai.evaluation import evaluate, render_markdown
+    from opensuse_ai.system_context import (
+        detect_system_context,
+        simulated_opensuse_context,
+    )
+
+    model_tiers = [m.strip() for m in models.split(",") if m.strip()]
+    sys_ctx = simulated_opensuse_context() if demo else detect_system_context()
+
+    console.print(
+        f"[bold]Evaluating {', '.join(model_tiers)}[/bold] "
+        f"(judge: {judge_tier})\n"
+    )
+
+    def gen_progress(model: str, qid: str, ms: float) -> None:
+        console.print(f"  [cyan]{model}[/cyan] answered [dim]{qid}[/dim] in {ms / 1000:.1f}s")
+
+    def judge_progress(model: str, qid: str, score: int) -> None:
+        console.print(f"  [magenta]judge[/magenta] {model}/{qid}: {score}/5")
+
+    results = evaluate(
+        cfg,
+        model_tiers,
+        judge_tier,
+        system_context=sys_ctx,
+        gen_progress=gen_progress,
+        judge_progress=judge_progress,
+    )
+
+    table = Table(title="Quality & Latency Evaluation")
+    table.add_column("Model", style="bold cyan")
+    table.add_column("Quality (1-5)", justify="right")
+    table.add_column("Similarity", justify="right")
+    table.add_column("Avg latency", justify="right")
+    table.add_column("tok/s", justify="right")
+    for r in sorted(results, key=lambda x: x.avg_judge_score, reverse=True):
+        table.add_row(
+            r.model_name,
+            f"{r.avg_judge_score:.2f}",
+            f"{r.avg_similarity:.3f}",
+            f"{r.avg_latency_ms / 1000:.1f} s",
+            f"{r.avg_tokens_per_second:.1f}",
+        )
+    console.print()
+    console.print(table)
+
+    report_path = Path(cfg.data_dir) / "eval_report.md"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(render_markdown(results, judge_tier))
+    console.print(f"[dim]Markdown report saved to {report_path}[/dim]")
+
+
+@main.command()
 @click.pass_context
 def sysinfo(ctx: click.Context) -> None:
     """Display detected system context information."""

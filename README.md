@@ -188,7 +188,8 @@ needs the reranker model cached for offline machines).
 suse-assist chat       # Interactive CLI chat (main experience)
 suse-assist web        # Launch Gradio web UI in browser
 suse-assist ingest     # Scrape docs and build vector store
-suse-assist benchmark  # Run performance benchmarks
+suse-assist benchmark  # Run performance benchmarks (latency/throughput)
+suse-assist eval       # Compare models on answer quality + latency
 suse-assist sysinfo    # Show detected system context
 suse-assist models recommend  # Recommend a local model tier based on RAM
 suse-assist mcp        # Run MCP server exposing tools over stdio
@@ -197,6 +198,27 @@ suse-assist mcp        # Run MCP server exposing tools over stdio
 `chat`, `web`, and `benchmark` support `--demo` to simulate an openSUSE Leap environment on
 non-openSUSE machines (`sysinfo` always shows the real detected context), and
 `--model-tier auto|test|lite|standard|full|custom` to pick the local model.
+
+### Quality evaluation
+
+`suse-assist eval` compares models head-to-head on the same openSUSE question
+set, scoring both **answer quality** and **latency** — fully offline:
+
+- **Quality (1-5)**: a strong local model (default `--judge full` = Qwen3-8B)
+  scores each answer against a gold reference and an expected-fact checklist.
+- **Similarity (0-1)**: embedding cosine similarity between answer and gold
+  reference (reuses the cached MiniLM model).
+
+It runs in two phases — generate all answers per model (one resident at a
+time), then load the judge once — so the memory-constrained VM never holds two
+large models. Gold answers live in `opensuse_ai/eval_dataset.py`.
+
+```bash
+suse-assist eval --models standard,gemma3-4b --judge full
+```
+
+`gemma3-4b` (Google Gemma 3 4B) is registered as a benchmark rival to the
+Qwen3-4B standard tier but kept out of the auto-selection ladder.
 
 ### MCP server (Model Context Protocol)
 
