@@ -28,3 +28,6 @@ build/
 .mypy_cache/
 htmlcov/
 .coverage
+
+# macOS
+.DS_Store
