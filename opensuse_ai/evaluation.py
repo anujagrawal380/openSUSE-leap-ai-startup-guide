@@ -133,24 +133,63 @@ def score_results(
     results: list[ModelEvalResult],
     judge_tier: str,
     progress=None,
+    judge_backend: str = "local",
+    judge_model_name: str = "gemini-2.5-flash",
 ) -> None:
-    """Score every recorded answer in place with similarity + LLM judge."""
-    from opensuse_ai.assistant import Assistant
+    """
+    Score every recorded answer in place with similarity + an LLM judge.
+
+    judge_backend:
+      "local"  — a local llama-cpp model of tier ``judge_tier`` (offline, but
+                 same-family bias when judging Qwen with Qwen).
+      "gemini" — the external Google Gemini API (neutral frontier judge; needs
+                 GEMINI_API_KEY and internet, so it runs off the VM).
+    """
     from opensuse_ai.rag import EmbeddingEngine
 
     embedding_engine = EmbeddingEngine(config.embedding)
     scorer = QualityScorer(embedding_engine)
 
-    # Load the judge model once (its own bare llama-cpp instance).
+    if judge_backend == "gemini":
+        from opensuse_ai.quality import GeminiJudge
+
+        # One batched call per model keeps total API calls low (5 instead of
+        # 40) — essential under the free-tier rate limit.
+        gemini = GeminiJudge(model=judge_model_name)
+        for result in results:
+            for rec in result.records:
+                rec.similarity = scorer.similarity(rec.answer, rec.reference)
+            items = [
+                {
+                    "id": rec.query_id,
+                    "query": rec.query,
+                    "reference": rec.reference,
+                    "expected_facts": rec.expected_facts,
+                    "answer": rec.answer,
+                }
+                for rec in result.records
+            ]
+            verdicts = gemini.score_batch(items)
+            for rec in result.records:
+                rec.judge_score, rec.judge_reason = verdicts.get(
+                    rec.query_id, (1, "no verdict")
+                )
+                if progress:
+                    progress(result.model_name, rec.query_id, rec.judge_score)
+        _aggregate(results)
+        return
+
+    # Local llama-cpp judge (per-answer; the model is already on the machine).
+    from opensuse_ai.assistant import Assistant
+
     judge_cfg = copy.deepcopy(config)
     judge_cfg.apply_model_tier(judge_tier)
     judge_assistant = Assistant(judge_cfg, rag_pipeline=None)
     judge_assistant.load_model()
     judge_model = judge_assistant._local_model
-
     # Qwen3 hybrid-thinking judges (not the 2507 instruct builds) must be told
-    # /no_think or they exhaust the token budget inside <think> before the JSON.
-    judge_no_think = (
+    # /no_think or they spend the token budget inside <think>.
+    no_think = (
         "qwen3" in judge_cfg.model.repo_id.lower()
         and "2507" not in judge_cfg.model.filename.lower()
     )
@@ -159,19 +198,18 @@ def score_results(
         for rec in result.records:
             rec.similarity = scorer.similarity(rec.answer, rec.reference)
             rec.judge_score, rec.judge_reason = scorer.judge(
-                judge_model,
-                rec.query,
-                rec.answer,
-                rec.reference,
-                rec.expected_facts,
-                no_think=judge_no_think,
+                judge_model, rec.query, rec.answer, rec.reference,
+                rec.expected_facts, no_think=no_think,
             )
             if progress:
                 progress(result.model_name, rec.query_id, rec.judge_score)
 
     _free_model(judge_assistant)
+    _aggregate(results)
 
-    # Aggregate
+
+def _aggregate(results: list[ModelEvalResult]) -> None:
+    """Compute per-model averages from scored records."""
     for result in results:
         recs = result.records
         n = len(recs) or 1
@@ -215,6 +253,8 @@ def evaluate(
     judge_progress=None,
     answers_cache: Path | None = None,
     reuse_answers: bool = False,
+    judge_backend: str = "local",
+    judge_model_name: str = "gemini-2.5-flash",
 ) -> list[ModelEvalResult]:
     """
     Run the two-phase evaluation and return per-model results.
@@ -233,16 +273,19 @@ def evaluate(
         ]
         if answers_cache:
             save_answers(results, answers_cache)
-    score_results(config, results, judge_tier, judge_progress)
+    score_results(
+        config, results, judge_tier, judge_progress,
+        judge_backend=judge_backend, judge_model_name=judge_model_name,
+    )
     return results
 
 
-def render_markdown(results: list[ModelEvalResult], judge_tier: str) -> str:
+def render_markdown(results: list[ModelEvalResult], judge_label: str) -> str:
     """Render a comparison report as Markdown."""
     lines = [
         "# Model Quality & Latency Evaluation",
         "",
-        f"Judge model tier: `{judge_tier}`. "
+        f"Judge: `{judge_label}`. "
         f"Questions: {len(results[0].records) if results else 0}. "
         "Quality 1-5 (LLM judge), similarity 0-1 (embedding cosine vs gold answer).",
         "",

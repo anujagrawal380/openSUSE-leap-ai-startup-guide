@@ -338,7 +338,18 @@ def benchmark(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
     "--judge",
     "judge_tier",
     default="full",
-    help="Model tier used as the LLM judge (default: full = Qwen3-8B)",
+    help="Local model tier used as judge when --judge-backend=local (default: full)",
+)
+@click.option(
+    "--judge-backend",
+    type=click.Choice(["local", "gemini"]),
+    default="local",
+    help="Judge backend: 'local' (offline llama-cpp) or 'gemini' (external API)",
+)
+@click.option(
+    "--judge-model",
+    default="gemini-2.5-flash",
+    help="Gemini model name when --judge-backend=gemini",
 )
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
 @click.option(
@@ -348,7 +359,13 @@ def benchmark(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
 )
 @click.pass_context
 def eval(
-    ctx: click.Context, models: str, judge_tier: str, demo: bool, reuse_answers: bool
+    ctx: click.Context,
+    models: str,
+    judge_tier: str,
+    judge_backend: str,
+    judge_model: str,
+    demo: bool,
+    reuse_answers: bool,
 ) -> None:
     """Compare models on answer quality (LLM judge + similarity) and latency."""
     cfg: Config = ctx.obj["config"]
@@ -363,9 +380,10 @@ def eval(
     model_tiers = [m.strip() for m in models.split(",") if m.strip()]
     sys_ctx = simulated_opensuse_context() if demo else detect_system_context()
 
+    judge_label = judge_model if judge_backend == "gemini" else f"{judge_tier} (local)"
     console.print(
         f"[bold]Evaluating {', '.join(model_tiers)}[/bold] "
-        f"(judge: {judge_tier})\n"
+        f"(judge: {judge_label})\n"
     )
 
     def gen_progress(model: str, qid: str, ms: float) -> None:
@@ -383,6 +401,8 @@ def eval(
         judge_progress=judge_progress,
         answers_cache=Path(cfg.data_dir) / "eval_answers.json",
         reuse_answers=reuse_answers,
+        judge_backend=judge_backend,
+        judge_model_name=judge_model,
     )
 
     table = Table(title="Quality & Latency Evaluation")
@@ -404,7 +424,7 @@ def eval(
 
     report_path = Path(cfg.data_dir) / "eval_report.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(render_markdown(results, judge_tier))
+    report_path.write_text(render_markdown(results, judge_label))
     console.print(f"[dim]Markdown report saved to {report_path}[/dim]")
 
 

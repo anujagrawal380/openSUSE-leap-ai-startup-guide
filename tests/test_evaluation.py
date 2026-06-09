@@ -42,12 +42,12 @@ def test_render_markdown_sorts_by_quality():
     )
     b.records = [_rec(5, 0.8, 94000, 30.6)]
 
-    md = render_markdown([a, b], judge_tier="full")
+    md = render_markdown([a, b], judge_label="gemini-2.5-flash")
     assert "| standard |" in md
     assert "| gemma3-4b |" in md
     # higher-quality 'standard' row must appear before 'gemma3-4b'
     assert md.index("| standard |") < md.index("| gemma3-4b |")
-    assert "Judge model tier: `full`" in md
+    assert "Judge: `gemini-2.5-flash`" in md
 
 
 def test_gemma_model_registered():

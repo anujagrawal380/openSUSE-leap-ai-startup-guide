@@ -67,3 +67,81 @@ def test_similarity_uses_embeddings():
 def test_similarity_empty_answer():
     scorer = QualityScorer(_FakeEmbed())
     assert scorer.similarity("", "anything") == 0.0
+
+
+def test_gemini_judge_requires_key(monkeypatch):
+    from opensuse_ai.quality import GeminiJudge
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    try:
+        GeminiJudge()
+        assert False, "expected ValueError without key"
+    except ValueError as e:
+        assert "GEMINI_API_KEY" in str(e)
+
+
+def test_gemini_judge_parses_response(monkeypatch):
+    import opensuse_ai.quality as q
+    from opensuse_ai.quality import GeminiJudge
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {
+                "candidates": [
+                    {"content": {"parts": [{"text": '{"score": 4, "reason": "ok"}'}]}}
+                ]
+            }
+
+    monkeypatch.setattr(q, "requests", type("R", (), {"post": staticmethod(lambda *a, **k: _Resp()), "RequestException": Exception}), raising=False)
+    judge = GeminiJudge(api_key="dummy")
+    score, reason = judge.score("q", "a zypper answer", "ref", ["zypper"])
+    assert score == 4
+    assert reason == "ok"
+
+
+def test_gemini_judge_empty_answer_short_circuits(monkeypatch):
+    from opensuse_ai.quality import GeminiJudge
+
+    judge = GeminiJudge(api_key="dummy")
+    assert judge.score("q", "   ", "ref", []) == (1, "empty answer")
+
+
+def test_parse_judge_batch_maps_by_id():
+    from opensuse_ai.quality import parse_judge_batch
+
+    text = 'noise [{"id":"a","score":5,"reason":"good"},{"id":"b","score":2,"reason":"bad"}] end'
+    out = parse_judge_batch(text, ["a", "b"])
+    assert out["a"] == (5, "good")
+    assert out["b"] == (2, "bad")
+
+
+def test_parse_judge_batch_fills_missing():
+    from opensuse_ai.quality import parse_judge_batch
+
+    out = parse_judge_batch('[{"id":"a","score":4,"reason":"ok"}]', ["a", "b"])
+    assert out["a"] == (4, "ok")
+    assert out["b"][0] == 1  # missing -> default 1
+
+
+def test_score_batch_single_call(monkeypatch):
+    """score_batch must hit the API exactly once for many items."""
+    from opensuse_ai.quality import GeminiJudge
+
+    calls = {"n": 0}
+
+    def fake_generate(self, sys_p, user_p, max_tokens):
+        calls["n"] += 1
+        return '[{"id":"x","score":5,"reason":"a"},{"id":"y","score":3,"reason":"b"}]', None
+
+    monkeypatch.setattr(GeminiJudge, "_generate", fake_generate)
+    judge = GeminiJudge(api_key="dummy")
+    items = [
+        {"id": "x", "query": "q", "reference": "r", "expected_facts": [], "answer": "a"},
+        {"id": "y", "query": "q", "reference": "r", "expected_facts": [], "answer": "a"},
+    ]
+    out = judge.score_batch(items)
+    assert calls["n"] == 1
+    assert out["x"] == (5, "a")
+    assert out["y"] == (3, "b")
