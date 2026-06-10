@@ -1,3 +1,7 @@
+> **Superseded** by `all-models-quality-eval-gemini-judge.md`. This run used
+> Qwen3-8B as the judge, which is biased (it grades Qwen models and itself).
+> Kept for comparison; use the external-judge report as authoritative.
+
 # All-Model Quality & Latency Evaluation — openSUSE Leap 16.0 VM
 
 openSUSE Leap 16.0 VM · 4 vCPU · 15 GB RAM · CPU-only · fully offline.
