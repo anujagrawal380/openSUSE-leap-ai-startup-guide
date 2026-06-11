@@ -1,7 +1,7 @@
 """
 MCP (Model Context Protocol) server exposing the assistant's capabilities.
 
-PoC for the GSoC proposal's MCP integration milestone: any MCP-capable
+Implements the GSoC proposal's MCP integration milestone: any MCP-capable
 client (Claude Desktop, other LLM agents, IDEs) can use the openSUSE
 system context and documentation search as tools, instead of going
 through our bundled chat UI.

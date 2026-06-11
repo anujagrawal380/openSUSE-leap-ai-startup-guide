@@ -42,12 +42,12 @@ This project puts a knowledgeable openSUSE guide **on the user's own machine** t
 
 A newcomer installs openSUSE Leap and, from first boot, has a built-in assistant that walks
 them through getting productive — eventually integrated into the installer (Agama) /
-firstboot and shipped as an openSUSE package. This repository is the proof-of-concept and
-engineering groundwork toward that vision.
+firstboot and shipped as an openSUSE package. This repository is the working
+implementation and engineering groundwork toward that vision.
 
 ## Project status
 
-**Working proof-of-concept**, validated end-to-end on an openSUSE Leap 16.0 VM (CPU-only,
+**Working assistant**, validated end-to-end on an openSUSE Leap 16.0 VM (CPU-only,
 fully offline):
 
 - ✅ Local SLM + RAG over official openSUSE docs (Startup, Reference, Leap 16.0 Release
@@ -56,7 +56,7 @@ fully offline):
 - ✅ CLI + web UI, containerized, runs offline on the VM
 - ✅ Hardware-based model tiers + an answer-quality evaluation suite (judged by a neutral
   external LLM — see [`docs/evaluations/`](docs/evaluations/))
-- ✅ MCP server + client proof-of-concepts
+- ✅ MCP server + client integration
 - 🚧 **Next:** native systemd service, RPM/OBS packaging, installer/firstboot integration
 
 See [`docs/`](docs/) for the design decisions, model/vector-DB evaluations, and integration
@@ -362,14 +362,14 @@ The assistant includes pre-built onboarding flows accessible via `topic <name>`:
 
 ## Roadmap
 
-The path from this proof-of-concept to an assistant shipped inside openSUSE:
+The path from today's working assistant to one shipped inside openSUSE:
 
 **Phase 1 — Core assistant (done)**
 - ✅ Local SLM + RAG over official openSUSE docs & wiki; offline & private
 - ✅ System-context awareness (Btrfs/Snapper, GPU, network, firewall, locale)
 - ✅ CLI + web UI, containerized, validated on a Leap 16.0 VM
 - ✅ Model tiers + answer-quality evaluation suite (neutral external-LLM judge)
-- ✅ MCP server + client proof-of-concepts
+- ✅ MCP server + client integration
 
 **Phase 2 — Productionization (in progress)**
 - 🚧 Native systemd service (removes the container host-mount crutch)

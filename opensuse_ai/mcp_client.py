@@ -1,7 +1,7 @@
 """
-MCP client PoC: the assistant consuming tools from external MCP servers.
+MCP client: the assistant consuming tools from external MCP servers.
 
-Counterpart to ``mcp_server.py``: where the server PoC lets other agents use
+Counterpart to ``mcp_server.py``: where the server lets other agents use
 *our* capabilities, this client lets the onboarding assistant call tools
 hosted by *any* MCP server (over stdio). Demonstrated end-to-end by pointing
 it at our own server:
@@ -29,7 +29,7 @@ except ImportError as exc:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
-# Default server: our own MCP server PoC, spawned as a subprocess.
+# Default server: our own MCP server, spawned as a subprocess.
 DEFAULT_SERVER_COMMAND = "suse-assist mcp"
 
 

@@ -43,7 +43,7 @@ class DocumentationScraper:
         self.pages: list[ScrapedPage] = []
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "openSUSE-AI-Onboarding-Scraper/0.1 (GSoC POC)"
+            "User-Agent": "openSUSE-AI-Onboarding-Scraper/0.1 (GSoC)"
         })
 
     def scrape(self) -> list[ScrapedPage]:
@@ -169,7 +169,7 @@ class MediaWikiScraper:
         self.pages: list[ScrapedPage] = []
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "openSUSE-AI-Onboarding-Scraper/0.1 (GSoC POC)"
+            "User-Agent": "openSUSE-AI-Onboarding-Scraper/0.1 (GSoC)"
         })
 
     def scrape(self) -> list[ScrapedPage]:

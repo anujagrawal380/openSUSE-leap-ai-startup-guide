@@ -1,4 +1,4 @@
-"""Tests for the MCP server PoC (skipped when 'mcp' is not installed)."""
+"""Tests for the MCP server (skipped when 'mcp' is not installed)."""
 
 import asyncio
 
@@ -19,7 +19,7 @@ def server(tmp_path):
 
 
 def test_tools_registered(server):
-    """Both PoC tools should be exposed."""
+    """Both tools should be exposed."""
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert names == {"get_system_context", "search_docs"}

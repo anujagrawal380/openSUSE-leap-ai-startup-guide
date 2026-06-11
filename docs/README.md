@@ -26,10 +26,10 @@ status, and quick start; this folder holds the deeper detail behind each decisio
 | Doc | What it is |
 |-----|------------|
 | [integration/installer-firstboot-systems.md](integration/installer-firstboot-systems.md) | How Agama, `jeos-firstboot`, and YaST firstboot work — where the assistant can hook in |
-| [integration/agama-leap16-poc.md](integration/agama-leap16-poc.md) | Agama integration proof-of-concept notes for Leap 16 |
+| [integration/agama-leap16-poc.md](integration/agama-leap16-poc.md) | Agama integration design notes for Leap 16 |
 
 ## Design explorations
 
 | Doc | What it is |
 |-----|------------|
-| [action-items/mcp-application-pocs.md](action-items/mcp-application-pocs.md) | MCP (Model Context Protocol) application proof-of-concepts |
+| [action-items/mcp-application-pocs.md](action-items/mcp-application-pocs.md) | MCP (Model Context Protocol) application explorations |
