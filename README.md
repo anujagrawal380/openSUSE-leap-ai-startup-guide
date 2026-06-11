@@ -33,7 +33,7 @@ Set via `config.yaml`:
 ```yaml
 model:
   inference_mode: "local"   # or "api"
-  tier: "standard"          # auto-selects Qwen3-4B for local mode
+  tier: "standard"          # Gemma 4 E4B for local mode (or "auto")
   api_model_id: "Qwen/Qwen3-235B-A22B"  # used in api mode
 ```
 
@@ -79,8 +79,8 @@ config.model.inference_mode = "api"
 
 | Decision | Rationale |
 |----------|-----------|
-| **Qwen3 model family** | Apache 2.0, 1.7B/4B/8B ladder, non-thinking, strong multilingual, mature GGUF support |
-| **Qwen3-4B-Instruct-2507 (default)** | ~2.5GB Q4, 256K native context, no `<think>` output, strong instruction following |
+| **Gemma 4 E4B (standard/full default)** | Mentor-preferred; edge/effective-4B, ~4.9GB q4_0, needs llama-cpp ≥ 0.3.25. Qwen3 tiers remain benchmarkable via `EXTRA_MODELS` |
+| **Qwen3 family (lite + baselines)** | Apache 2.0, non-thinking, strong multilingual; Qwen3-1.7B is the lite tier, Qwen3-4B/8B kept as benchmark baselines |
 | **Dual inference mode** | `local` (llama-cpp-python) for offline/CLI, `api` (HF Inference API) for cloud/Spaces |
 | **HF Inference API for Spaces** | Eliminates C++ compilation and large model downloads in cloud builds |
 | **LanceDB** | Embedded vector DB, local filesystem, Apache 2.0, Lance/Arrow format, no daemon |
@@ -218,7 +218,7 @@ suse-assist eval --models standard,gemma3-4b --judge full
 ```
 
 `gemma3-4b` (Google Gemma 3 4B) is registered as a benchmark rival to the
-Qwen3-4B standard tier but kept out of the auto-selection ladder.
+standard tier but kept out of the auto-selection ladder.
 
 ### MCP server (Model Context Protocol)
 

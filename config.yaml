@@ -7,7 +7,7 @@ model:
   inference_mode: "local"
   # Hardware tier: "test", "lite", "standard", "full", "auto", or "custom".
   # Keep "test" in version control to avoid surprise multi-GB downloads.
-  # Production deployments should use "standard" (Qwen3-4B) or "auto".
+  # Production deployments should use "standard" (Gemma 4 E4B) or "auto".
   # Use: suse-assist models recommend
   tier: "test"
   # These fields are replaced by the tier unless tier is "custom".
