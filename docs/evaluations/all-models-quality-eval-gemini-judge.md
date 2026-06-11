@@ -3,9 +3,9 @@
 openSUSE Leap 16.0 VM · 4 vCPU · 15 GB RAM · CPU-only · fully offline (generation).
 Judge: **Google Gemini 2.5 Flash-Lite** (external API, run off-VM on cached answers).
 
-> This supersedes the local-judge report (`all-models-quality-eval-leap16-vm.md`),
-> which used Qwen3-8B as judge — biased, since it graded Qwen models (and itself).
-> A neutral frontier model from a different family removes that bias.
+> Earlier iterations judged with the local Qwen3-8B — biased, since it graded
+> Qwen models (and itself). This report uses a neutral frontier model from a
+> different family, removing that bias.
 
 ## Method
 
