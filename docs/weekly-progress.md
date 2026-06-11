@@ -4,6 +4,27 @@ Stand-up style log for weekly meetings. Newest week first.
 
 ---
 
+## Week of Jun 8, 2026
+
+**Done**
+- Built an **answer-quality evaluation suite** (`suse-assist eval`): generates answers per model on the VM, then scores them on quality + latency. Two-phase so only one model is resident at a time.
+- Made the judge **unbiased** — replaced the local Qwen3-8B judge (graded Qwen with Qwen) with a **neutral external LLM (Google Gemini)**. Decoupled generation (on-VM, offline) from judging (off-VM), with batched scoring (one API call per model, not per answer) to stay under rate limits.
+- Benchmarked **all models incl. Gemma 3 4B and Gemma 4 E4B** under the neutral judge. Ranking: Qwen3-4B 4.88, Qwen3-8B 4.75, Gemma 4 E4B 4.62, Gemma 3 4B 4.50, Qwen3-1.7B 4.00, TinyLlama 2.62. Report in `docs/evaluations/all-models-quality-eval-gemini-judge.md`.
+- Added **NVIDIA troubleshooting** docs to the RAG index (driver install, SUSE Prime/Optimus, general troubleshooting) — a common user pain point.
+- Switched the **standard/full tiers to Gemma 4 E4B** (mentor preference); Qwen3 kept as benchmark baselines. Needs llama-cpp ≥ 0.3.25.
+- **Repo legibility pass** for community traction: README reframed around the project's purpose, endgoal, status, and a phased roadmap; added a `docs/` index; removed superseded reports; dropped "proof-of-concept" framing.
+- **Published a container image** to ghcr.io via a GitHub Actions workflow (models excluded — mount as a volume) so Lubos can prototype OEM deployment.
+
+**Next**
+- Rebase the container onto an **openSUSE base** (SUSE BCI) and build/publish via **OBS → registry.opensuse.org** (per Lubos — the GitHub image is Debian-based, not openSUSE-native).
+- Native **systemd service**; **RPM packaging** via OBS.
+- Decide **model bundling** strategy for an offline OEM image (bundle vs firstboot-fetch).
+
+**Blockers**
+- None. (Gemini free-tier daily quota throttled mid-week; worked around with batched calls + a fresh key.)
+
+---
+
 ## Week of Jun 1, 2026
 
 **Done**
