@@ -21,7 +21,8 @@ Stand-up style log for weekly meetings. Newest week first.
 - Decide **model bundling** strategy for an offline OEM image (bundle vs firstboot-fetch).
 
 **Blockers**
-- None. (Gemini free-tier daily quota throttled mid-week; worked around with batched calls + a fresh key.)
+- **Repo transfer to the openSUSE org** — needed so the project lives under openSUSE (not a personal account) for community ownership, CI, and registry/OBS integration. Pending org decision/access.
+- (Gemini free-tier daily quota throttled mid-week; worked around with batched calls + a fresh key.)
 
 ---
 
