@@ -13,10 +13,10 @@ Stand-up style log for weekly meetings. Newest week first.
 - Added **NVIDIA troubleshooting** docs to the RAG index (driver install, SUSE Prime/Optimus, general troubleshooting) — a common user pain point.
 - Switched the **standard/full tiers to Gemma 4 E4B** (mentor preference); Qwen3 kept as benchmark baselines. Needs llama-cpp ≥ 0.3.25.
 - **Repo legibility pass** for community traction: README reframed around the project's purpose, endgoal, status, and a phased roadmap; added a `docs/` index; removed superseded reports; dropped "proof-of-concept" framing.
-- **Published a container image** to ghcr.io via a GitHub Actions workflow (models excluded — mount as a volume) so Lubos can prototype OEM deployment.
+- **Published a container image** to ghcr.io via a GitHub Actions workflow (models excluded — mount as a volume) to enable OEM deployment prototyping.
 
 **Next**
-- Rebase the container onto an **openSUSE base** (SUSE BCI) and build/publish via **OBS → registry.opensuse.org** (per Lubos — the GitHub image is Debian-based, not openSUSE-native).
+- Rebase the container onto an **openSUSE base** (SUSE BCI) and build/publish via **OBS → registry.opensuse.org** (the current GitHub image is Debian-based, not openSUSE-native).
 - Native **systemd service**; **RPM packaging** via OBS.
 - Decide **model bundling** strategy for an offline OEM image (bundle vs firstboot-fetch).
 
