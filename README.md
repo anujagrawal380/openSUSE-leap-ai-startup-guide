@@ -12,9 +12,55 @@ pinned: false
 
 # openSUSE Leap AI Startup Guide
 
-A locally-running, containerized AI assistant that helps new users get started with **openSUSE Leap**. It combines a **Small Language Model (SLM)** with a **Retrieval-Augmented Generation (RAG)** pipeline over official openSUSE documentation to provide accurate, context-aware guidance.
+> A private, offline AI assistant that helps people get started with **openSUSE Leap** —
+> answering setup and troubleshooting questions in plain language, grounded in the
+> official openSUSE documentation and aware of the user's actual system.
+
+*Google Summer of Code 2026 · openSUSE · "AI-Powered Onboarding Experience for openSUSE Linux Distributions"*
 
 **[Try the live demo on HuggingFace Spaces →](https://huggingface.co/spaces/anujagawal/opensuse-leap-ai-guide)**
+
+---
+
+## Why this exists
+
+New openSUSE users — especially people arriving from other distributions — hit the
+same wall: *"How do I install software? Add a repo? Open a firewall port? Roll back a
+bad update? What is YaST?"* The answers exist in the documentation and wiki, but they're
+scattered, and a brand-new user doesn't yet know the openSUSE vocabulary (`zypper`, YaST,
+Snapper, `firewalld`) to find them.
+
+This project puts a knowledgeable openSUSE guide **on the user's own machine** that:
+
+- **Answers in plain language**, grounded in official docs (no hallucinated commands).
+- **Knows the user's system** — it reads real state (distribution, filesystem + Snapper,
+  GPU, network, firewall) and tailors answers to *this* machine, not generic Linux.
+- **Runs fully offline and private** — a small local model + local vector search, no cloud
+  calls, no data leaving the box. Critical for a tool meant to ship inside the distro.
+
+## The endgoal
+
+A newcomer installs openSUSE Leap and, from first boot, has a built-in assistant that walks
+them through getting productive — eventually integrated into the installer (Agama) /
+firstboot and shipped as an openSUSE package. This repository is the proof-of-concept and
+engineering groundwork toward that vision.
+
+## Project status
+
+**Working proof-of-concept**, validated end-to-end on an openSUSE Leap 16.0 VM (CPU-only,
+fully offline):
+
+- ✅ Local SLM + RAG over official openSUSE docs (Startup, Reference, Leap 16.0 Release
+  Notes, curated wiki SDB articles incl. NVIDIA troubleshooting)
+- ✅ Real system-context detection (Btrfs/Snapper, GPU, network, firewall, locale, …)
+- ✅ CLI + web UI, containerized, runs offline on the VM
+- ✅ Hardware-based model tiers + an answer-quality evaluation suite (judged by a neutral
+  external LLM — see [`docs/evaluations/`](docs/evaluations/))
+- ✅ MCP server + client proof-of-concepts
+- 🚧 **Next:** native systemd service, RPM/OBS packaging, installer/firstboot integration
+
+See [`docs/`](docs/) for the design decisions, model/vector-DB evaluations, and integration
+plans behind each of these. Roadmap detail at the [end of this README](#roadmap).
 
 ---
 
@@ -24,7 +70,7 @@ The assistant supports two inference backends, configurable via `config.yaml` or
 
 | Mode | Backend | Use Case | Dependencies |
 |------|---------|----------|--------------|
-| **`local`** (default) | `llama-cpp-python` (Qwen3 family, GGUF) | CLI, containers, fully offline & private | `llama-cpp-python`, C++ toolchain |
+| **`local`** (default) | `llama-cpp-python` (Gemma 4 E4B default; Qwen3 tiers, GGUF) | CLI, containers, fully offline & private | `llama-cpp-python`, C++ toolchain |
 | **`api`** | HuggingFace Inference API (Qwen3-235B-A22B) | HF Spaces, lightweight cloud deployment | `huggingface-hub` (no compilation) |
 
 Both modes use the **same RAG pipeline** (LanceDB + MiniLM embeddings) for document retrieval — only the LLM generation step differs.
@@ -256,41 +302,41 @@ Example Claude Desktop config entry:
 ## Project Structure
 
 ```
-opensuse_ai/
-├── __init__.py
-├── config.py           # Centralized configuration (YAML + dataclasses, model tiers, doc sources)
-├── scraper.py          # Documentation crawler for doc.opensuse.org
-├── rag.py              # RAG pipeline: chunking, dedup, embedding, retrieval
-├── assistant.py        # LLM engine: dual-mode (local llama-cpp / HF Inference API)
-├── system_context.py   # OS-level context detection (zypper, systemd, etc.)
-├── benchmark.py        # Performance measurement and reporting
-├── cli.py              # Rich-powered CLI interface
-├── web_ui.py           # Gradio web UI
-└── vectorstore/        # Vector store backend (LanceDB)
-    ├── base.py         # Backend interface
-    └── lance_backend.py
+opensuse_ai/             # The Python package (installed as the `suse-assist` CLI)
+├── config.py            # Config: model tiers, RAG params, doc sources (YAML + dataclasses)
+├── scraper.py           # Doc ingestion: crawls doc.opensuse.org + MediaWiki API (wiki SDB)
+├── rag.py               # RAG pipeline: chunk, dedup, embed, retrieve (+ optional reranker)
+├── assistant.py         # LLM engine: dual-mode (local llama-cpp / HF Inference API)
+├── system_context.py    # OS-level context detection (distro, Btrfs/Snapper, GPU, network…)
+├── cli.py               # Rich-powered CLI — the `suse-assist` entrypoint
+├── web_ui.py            # Gradio web UI
+├── benchmark.py         # Latency / throughput / memory benchmarking
+├── eval_dataset.py      # Gold Q&A set for answer-quality evaluation
+├── quality.py           # Quality scorers: embedding similarity + LLM judge (local or Gemini)
+├── evaluation.py        # Eval orchestrator: generate answers per model, then judge
+├── mcp_server.py        # MCP server — exposes system context + doc search as tools
+├── mcp_client.py        # MCP client — calls tools on external MCP servers
+└── vectorstore/         # Pluggable vector store backend
+    ├── base.py          # Backend interface
+    └── lance_backend.py # LanceDB implementation
 
-scripts/
-└── local_ingest.py     # Build the vector store on a networked host (for offline VMs)
+scripts/local_ingest.py  # Build the vector store on a networked host (for offline VMs)
+deploy/                  # systemd unit + Leap VM setup script for native deployment
+tests/                   # pytest suite (config, RAG, system context, eval, MCP, …)
 
-tests/
-├── test_config.py
-├── test_scraper.py
-├── test_system_context.py
-├── test_rag.py
-└── test_vectorstore_backends.py
+docs/                    # Project narrative, decisions, evaluations — see docs/README.md
+├── README.md            # Index / map of all documentation
+├── gsoc-proposal.md     # The accepted GSoC proposal (full project plan)
+├── evaluations/         # Model & vector-DB decisions and benchmark reports
+├── integration/         # Installer (Agama) / firstboot integration design
+└── action-items/        # Mentor action-item breakdowns
 
-docs/
-├── llm-comparison.md   # Original comparison of candidate LLMs
-├── action-items/       # GSoC mentor action item breakdowns
-├── evaluations/        # LLM/vector DB evaluation notes
-└── integration/        # Agama/firstboot integration notes
-
-Containerfile           # Multi-stage OCI container build
-compose.yaml            # Compose file with resource constraints
-config.yaml             # Default configuration (inference_mode, model, RAG settings)
-requirements.txt        # HF Spaces dependencies (API mode, no llama-cpp-python)
-pyproject.toml          # Python packaging (PEP 621, includes llama-cpp-python for local)
+Containerfile            # Multi-stage OCI container build
+compose.yaml             # Compose file with resource constraints
+config.yaml              # Default configuration (inference_mode, model tier, RAG settings)
+app.py                   # HuggingFace Spaces entrypoint (api mode)
+requirements.txt         # HF Spaces deps (API mode, no llama-cpp-python)
+pyproject.toml           # Python packaging (PEP 621; `.[mcp]` extra for MCP support)
 ```
 
 
@@ -314,11 +360,32 @@ The assistant includes pre-built onboarding flows accessible via `topic <name>`:
 - `troubleshooting` — Common issues
 - `community` — Getting involved
 
-## Future Work
+## Roadmap
 
-- **Installer integration**: Hook into YaST firstboot module or linuxrc
-- **MCP integration**: Model Context Protocol servers for system context, docs, and onboarding flows
-- **Snapper integration**: Context-aware rollback guidance
-- **Offline RPM packaging**: Package as an openSUSE RPM with bundled model
-- **Security hardening**: Sandboxed execution, prompt injection defenses
-- **Telemetry**: Opt-in usage analytics for improving responses
+The path from this proof-of-concept to an assistant shipped inside openSUSE:
+
+**Phase 1 — Core assistant (done)**
+- ✅ Local SLM + RAG over official openSUSE docs & wiki; offline & private
+- ✅ System-context awareness (Btrfs/Snapper, GPU, network, firewall, locale)
+- ✅ CLI + web UI, containerized, validated on a Leap 16.0 VM
+- ✅ Model tiers + answer-quality evaluation suite (neutral external-LLM judge)
+- ✅ MCP server + client proof-of-concepts
+
+**Phase 2 — Productionization (in progress)**
+- 🚧 Native systemd service (removes the container host-mount crutch)
+- 🚧 RPM packaging via OBS — installable with `zypper`
+- 🚧 Prompt-injection defenses and output sanitization hardening
+
+**Phase 3 — Distro integration (the endgoal)**
+- ⬜ Installer (Agama) / `jeos-firstboot` hook — onboarding from first boot
+- ⬜ OEM-image-based deployment (preloaded assistant)
+- ⬜ Deeper Snapper integration — context-aware rollback guidance
+
+See [`docs/integration/`](docs/integration/) for the integration design notes.
+
+## Contributing
+
+This is an openSUSE GSoC 2026 project and community input is very welcome. Good starting
+points: read [`docs/README.md`](docs/README.md) for the project map, try the
+[Quick Start](#quick-start), and open an issue with ideas, doc sources to add, or feedback
+on answer quality.
