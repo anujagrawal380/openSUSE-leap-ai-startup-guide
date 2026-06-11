@@ -83,6 +83,16 @@ EXTRA_MODELS: dict[str, ModelTier] = {
         max_tokens=700,
         description="Google Gemma 3 4B instruct — benchmark rival to Qwen3-4B standard.",
     ),
+    "gemma4-e4b": ModelTier(
+        name="gemma4-e4b",
+        label="Gemma 4 E4B",
+        min_available_ram_gb=8.0,
+        repo_id="google/gemma-4-E4B-it-qat-q4_0-gguf",
+        filename="gemma-4-E4B_q4_0-it.gguf",
+        n_ctx=32768,
+        max_tokens=700,
+        description="Google Gemma 4 E4B (edge/effective-4B) QAT q4_0 — smallest Gemma 4.",
+    ),
 }
 
 
