@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  kiwi OEM appliance description for openSUSE Leap with the AI onboarding
+  assistant preinstalled.
+
+  Approach: ship podman + a Quadlet unit (suse-assist.container) that runs the
+  published assistant container on boot. This avoids needing an RPM of the
+  assistant itself (not yet packaged) while still producing a real OEM image.
+
+  Build on OBS or with kiwi (NOT buildable on the offline VM / on macOS):
+      kiwi-ng --profile Leap16 system build \
+        --description deploy/oem --target-dir /tmp/oem-build
+
+  KNOWN OPEN ITEM — offline models:
+  The container excludes the ~5 GB model + vector index (they live in the
+  suse-assist-data volume). config.sh below assumes networked firstboot to
+  populate them. A fully offline OEM image must instead bundle that content
+  into the image (overlay the volume) — tracked as a roadmap item.
+-->
+
+<image schemaversion="7.4" name="openSUSE-Leap-AI-Onboarding">
+    <description type="system">
+        <author>openSUSE GSoC 2026</author>
+        <contact>https://github.com/anujagrawal380/openSUSE-leap-ai-startup-guide</contact>
+        <specification>openSUSE Leap with a preinstalled, system-aware AI onboarding assistant</specification>
+    </description>
+
+    <profiles>
+        <profile name="Leap16" description="openSUSE Leap 16.0 OEM image"/>
+    </profiles>
+
+    <preferences>
+        <version>0.1.0</version>
+        <packagemanager>zypper</packagemanager>
+        <locale>en_US</locale>
+        <keytable>us</keytable>
+        <timezone>UTC</timezone>
+        <rpm-excludedocs>true</rpm-excludedocs>
+        <type
+            image="oem"
+            filesystem="btrfs"
+            firmware="efi"
+            installiso="true"
+            bootpartition="false">
+            <bootloader name="grub2"/>
+            <oemconfig>
+                <oem-resize>true</oem-resize>
+                <oem-swap>true</oem-swap>
+            </oemconfig>
+            <systemdisk>
+                <volume name="@root"/>
+            </systemdisk>
+        </type>
+    </preferences>
+
+    <users>
+        <user name="root" password="!" home="/root" groups="root"/>
+    </users>
+
+    <packages type="image">
+        <!-- Base system + the container runtime that hosts the assistant -->
+        <package>patterns-base-minimal_base</package>
+        <package>podman</package>
+        <package>btrfsprogs</package>
+        <package>snapper</package>
+        <package>NetworkManager</package>
+        <package>firewalld</package>
+        <package>openssh-server</package>
+        <!-- The assistant itself runs as a container via the Quadlet unit;
+             once an RPM exists, add <package>suse-assist</package> here and
+             drop the container approach. -->
+    </packages>
+
+    <packages type="bootstrap">
+        <package>openSUSE-release</package>
+        <package>ca-certificates</package>
+    </packages>
+</image>

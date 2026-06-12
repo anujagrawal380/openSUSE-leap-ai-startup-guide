@@ -1,0 +1,33 @@
+# Podman Quadlet unit — runs the assistant container as a systemd service.
+# Place in /etc/containers/systemd/ ; systemd generates suse-assist.service.
+# This is the appliance runtime baked into the OEM image (see appliance.kiwi).
+
+[Unit]
+Description=openSUSE AI Onboarding Assistant
+Documentation=https://github.com/anujagrawal380/openSUSE-leap-ai-startup-guide
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+# Swap to registry.opensuse.org/<project>/... once the OBS build publishes there.
+Image=ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
+Exec=web --model-tier standard --port 7860
+PublishPort=7860:7860
+
+# Persistent models + vector index (populated at firstboot, see config.sh)
+Volume=suse-assist-data:/app/data
+
+# Read-only host introspection so answers are tailored to this machine
+Volume=/:/host:ro
+Environment=SUSE_AI_HOST_ROOT=/host
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+
+[Service]
+Restart=on-failure
+RestartSec=10
+# First pull/start can be slow; don't let systemd kill it prematurely.
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -1,0 +1,24 @@
+# One-shot firstboot job: pull the assistant image and populate the data
+# volume (model + RAG index) before the main service starts.
+# NETWORKED firstboot only — an offline OEM image must bundle this content
+# into the image instead (see appliance.kiwi caveat).
+
+[Unit]
+Description=openSUSE AI Onboarding — first boot model & index setup
+After=network-online.target podman.socket
+Wants=network-online.target
+Before=suse-assist.service
+ConditionPathExists=!/var/lib/suse-assist/.firstboot-done
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=3600
+ExecStart=/usr/bin/podman pull ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
+# Build the documentation index into the persistent volume.
+ExecStart=/usr/bin/podman run --rm -v suse-assist-data:/app/data \
+    ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest ingest
+ExecStartPost=/usr/bin/install -D -m 0644 /dev/null /var/lib/suse-assist/.firstboot-done
+
+[Install]
+WantedBy=multi-user.target
