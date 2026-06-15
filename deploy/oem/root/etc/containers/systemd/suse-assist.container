@@ -9,7 +9,8 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-# Swap to registry.opensuse.org/<project>/... once the OBS build publishes there.
+# Phase 1 target: registry.opensuse.org/<project>/suse-assist:latest.
+# GHCR remains the temporary fallback until the OBS image is published.
 Image=ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
 Exec=web --model-tier standard --port 7860
 PublishPort=7860:7860

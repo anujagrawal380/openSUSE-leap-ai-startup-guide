@@ -17,9 +17,11 @@ a Podman Quadlet unit** instead of a packaged binary:
 | `root/etc/containers/systemd/suse-assist.container` | Quadlet unit — runs the published container as a systemd service |
 | `root/etc/systemd/system/suse-assist-firstboot.service` | one-shot firstboot: pull image + build the doc index into the data volume |
 
-Once the assistant ships as an RPM (roadmap Phase 2), swap the container for
-`<package>suse-assist</package>` in `appliance.kiwi` and the native systemd unit
-in [`../suse-assist.service`](../suse-assist.service).
+Phase 1 keeps the assistant containerized and moves the image from GHCR to
+`registry.opensuse.org` via OBS. Once the assistant ships as a native RPM
+(later roadmap item), swap the container for `<package>suse-assist</package>` in
+`appliance.kiwi` and the native systemd unit in
+[`../suse-assist.service`](../suse-assist.service).
 
 ## Building
 

@@ -4,6 +4,27 @@ Stand-up style log for weekly meetings. Newest week first.
 
 ---
 
+## Week of Jun 15, 2026
+
+**Done / in progress**
+- Confirmed the Leap 16.0 VM is reachable with a dedicated GSoC SSH key.
+- Confirmed the public demo is running at `http://stage3.opensuse.org:19000/` from the `opensuse-ai-guide` Podman container.
+- Confirmed the VM data volume has six local GGUF models plus the MiniLM embedding cache.
+- Started Phase 1 productionization: openSUSE-native container deployment path before full native RPM packaging.
+
+**Next**
+- Publish the BCI-based container via OBS to `registry.opensuse.org`.
+- Replace GHCR references in the OEM Quadlet/firstboot units once the OBS image is live.
+- Build the Leap 16 OEM image around the container service.
+- Decide whether the first offline OEM image bundles Qwen3-4B + LanceDB index or keeps networked firstboot fetch as the first milestone.
+
+**Blockers / decisions needed**
+- OBS project/package name for the container image.
+- Whether a large offline AI OEM image that includes a ~2.5 GB GGUF model is acceptable.
+- Whether Phase 1 should ship only the container image or also a small RPM containing the Quadlet + launcher.
+
+---
+
 ## Week of Jun 8, 2026
 
 **Done**

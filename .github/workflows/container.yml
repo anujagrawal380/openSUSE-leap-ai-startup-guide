@@ -9,6 +9,17 @@ name: Build and publish container
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push image to GHCR instead of uploading a test artifact"
+        type: boolean
+        required: false
+        default: false
+      deploy_stage3:
+        description: "Copy the artifact to stage3 and run an offline Podman smoke test"
+        type: boolean
+        required: false
+        default: false
   push:
     tags:
       - "v*"
@@ -42,6 +53,7 @@ jobs:
             type=sha,format=short
 
       - name: Build and push
+        if: github.event_name == 'push' || inputs.publish
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
@@ -50,3 +62,68 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build image archive
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          file: ./Containerfile
+          tags: suse-assist:bci-phase1
+          load: true
+
+      - name: Save image archive
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish
+        run: docker save suse-assist:bci-phase1 -o /tmp/suse-assist-bci-phase1.tar
+
+      - name: Compress and checksum archive
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish
+        run: |
+          zstd -T0 -19 /tmp/suse-assist-bci-phase1.tar -o /tmp/suse-assist-bci-phase1.tar.zst
+          cd /tmp
+          sha256sum suse-assist-bci-phase1.tar.zst > suse-assist-bci-phase1.tar.zst.sha256
+
+      - name: Upload image archive
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: suse-assist-bci-phase1
+          path: |
+            /tmp/suse-assist-bci-phase1.tar.zst
+            /tmp/suse-assist-bci-phase1.tar.zst.sha256
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Deploy artifact to stage3 VM and smoke test
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish && inputs.deploy_stage3
+        env:
+          STAGE3_TMP_SSH_KEY: ${{ secrets.STAGE3_TMP_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${STAGE3_TMP_SSH_KEY}" > ~/.ssh/stage3_tmp_key
+          chmod 600 ~/.ssh/stage3_tmp_key
+          ssh-keyscan -p 22019 stage3.opensuse.org >> ~/.ssh/known_hosts
+
+          scp -i ~/.ssh/stage3_tmp_key -P 22019 \
+            /tmp/suse-assist-bci-phase1.tar.zst \
+            /tmp/suse-assist-bci-phase1.tar.zst.sha256 \
+            scripts/load_container_image.sh \
+            scripts/deploy_container.sh \
+            root@stage3.opensuse.org:/var/tmp/
+
+          ssh -i ~/.ssh/stage3_tmp_key -p 22019 root@stage3.opensuse.org '
+            set -euo pipefail
+            chmod +x /var/tmp/load_container_image.sh /var/tmp/deploy_container.sh
+            /var/tmp/load_container_image.sh /var/tmp/suse-assist-bci-phase1.tar.zst
+            SUSE_ASSIST_IMAGE=suse-assist:bci-phase1 \
+            SUSE_ASSIST_CONTAINER=suse-assist-bci-test \
+            SUSE_ASSIST_DATA_VOLUME=opensuse-ai-data \
+            SUSE_ASSIST_PORT=19001 \
+            SUSE_ASSIST_MODEL_TIER=test \
+              /var/tmp/deploy_container.sh web -d
+            sleep 15
+            podman logs --tail 80 suse-assist-bci-test
+            curl -I --max-time 20 http://127.0.0.1:19001/
+            SUSE_ASSIST_CONTAINER=suse-assist-bci-test /var/tmp/deploy_container.sh stop
+          '

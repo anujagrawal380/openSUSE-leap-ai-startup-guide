@@ -187,10 +187,21 @@ podman run -it --rm \
   opensuse-ai-assistant chat --demo
 ```
 
+The production container path is tracked in
+[`docs/deployment/container-phase1.md`](docs/deployment/container-phase1.md). It
+uses an openSUSE BCI base and keeps models/vector stores in a persistent data
+volume:
+
+```bash
+scripts/deploy_container.sh pull
+scripts/deploy_container.sh ingest
+scripts/deploy_container.sh web -d
+```
+
 ### Containerized deployment on an openSUSE host (real system context)
 
-The container base image is not openSUSE, so by default system context detection
-reports the container, not the host. Mount the host root read-only and set
+The container itself is openSUSE BCI based, but host-specific context still
+needs the real host root. Mount the host root read-only and set
 `SUSE_AI_HOST_ROOT` to detect the real host (distro, package manager, disk):
 
 ```bash
@@ -328,6 +339,7 @@ docs/                    # Project narrative, decisions, evaluations — see doc
 ├── README.md            # Index / map of all documentation
 ├── gsoc-proposal.md     # The accepted GSoC proposal (full project plan)
 ├── evaluations/         # Model & vector-DB decisions and benchmark reports
+├── deployment/          # Container/OEM deployment path
 ├── integration/         # Installer (Agama) / firstboot integration design
 └── action-items/        # Mentor action-item breakdowns
 

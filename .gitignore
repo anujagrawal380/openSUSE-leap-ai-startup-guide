@@ -17,6 +17,7 @@ data/
 .vscode/
 *.swp
 *.swo
+AGENTS.md
 
 # Distribution/packaging
 *.egg-info/
