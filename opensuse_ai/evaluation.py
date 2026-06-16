@@ -94,6 +94,7 @@ def generate_answers(
 
     cfg = copy.deepcopy(config)
     resolved = cfg.apply_model_tier(tier_name)
+    cfg.prompt_cache.enabled = False
 
     rag = RAGPipeline(cfg)
     assistant = Assistant(cfg, rag)

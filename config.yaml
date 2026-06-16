@@ -42,5 +42,12 @@ rag:
   rerank_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
   rerank_candidates: 24
 
+prompt_cache:
+  # Return a stored answer when the same prompt is asked again under the same
+  # model, RAG, and detected system context. Leave path empty to use
+  # data/prompt_cache.json.
+  enabled: true
+  path: ""
+
 data_dir: "./data"
 log_level: "INFO"

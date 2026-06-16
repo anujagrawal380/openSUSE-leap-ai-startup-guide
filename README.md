@@ -228,6 +228,11 @@ Retrieval is plain vector search by default; set `rag.rerank: true` in
 `config.yaml` to enable cross-encoder reranking (better relevance, slower,
 needs the reranker model cached for offline machines).
 
+Repeated chat/web prompts are cached by default in `data/prompt_cache.json`.
+The cache key includes the normalized prompt plus model, RAG settings, and
+detected system context, so changing those inputs generates a fresh answer.
+Set `prompt_cache.enabled: false` in `config.yaml` to disable it.
+
 ### Available Commands
 
 ```bash
@@ -307,6 +312,7 @@ opensuse_ai/             # The Python package (installed as the `suse-assist` CL
 ├── scraper.py           # Doc ingestion: crawls doc.opensuse.org + MediaWiki API (wiki SDB)
 ├── rag.py               # RAG pipeline: chunk, dedup, embed, retrieve (+ optional reranker)
 ├── assistant.py         # LLM engine: dual-mode (local llama-cpp / HF Inference API)
+├── prompt_cache.py      # Persistent response cache for repeated prompts
 ├── system_context.py    # OS-level context detection (distro, Btrfs/Snapper, GPU, network…)
 ├── cli.py               # Rich-powered CLI — the `suse-assist` entrypoint
 ├── web_ui.py            # Gradio web UI
