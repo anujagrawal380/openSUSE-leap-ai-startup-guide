@@ -11,9 +11,11 @@ Stand-up style log for weekly meetings. Newest week first.
 - Confirmed the public demo is running at `http://stage3.opensuse.org:19000/` from the `opensuse-ai-guide` Podman container.
 - Confirmed the VM data volume has six local GGUF models plus the MiniLM embedding cache.
 - Started Phase 1 productionization: openSUSE-native container deployment path before full native RPM packaging.
+- Created OBS staging project `home:anujagrawal:suse-assist` and package `suse-assist-image`; OBS recognizes the Dockerfile container build.
 
 **Next**
-- Publish the BCI-based container via OBS to `registry.opensuse.org`.
+- Decide how to handle OBS's network-isolated build for Python/ML dependencies: vendored wheels first, or proper RPM dependency packaging.
+- Publish the BCI-based container via OBS to `registry.opensuse.org` after dependency strategy is chosen.
 - Replace GHCR references in the OEM Quadlet/firstboot units once the OBS image is live.
 - Build the Leap 16 OEM image around the container service.
 - Decide whether the first offline OEM image bundles Qwen3-4B + LanceDB index or keeps networked firstboot fetch as the first milestone.

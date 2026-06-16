@@ -305,6 +305,7 @@ def benchmark(ctx: click.Context, demo: bool, model_tier: str | None) -> None:
         simulated_opensuse_context,
     )
 
+    cfg.prompt_cache.enabled = False
     console.print("[bold]Running performance benchmarks...[/bold]\n")
 
     rag = RAGPipeline(cfg)

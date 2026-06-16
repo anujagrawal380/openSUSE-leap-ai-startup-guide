@@ -24,7 +24,8 @@ try:
 except ImportError:
     Llama = None
 
-from opensuse_ai.config import Config, ModelConfig
+from opensuse_ai.config import Config
+from opensuse_ai.prompt_cache import PromptResponseCache
 from opensuse_ai.rag import RAGPipeline
 from opensuse_ai.system_context import SystemContext
 
@@ -57,6 +58,7 @@ class AssistantResponse:
     sources: list[dict]
     generation_time_ms: float
     tokens_used: int
+    cached: bool = False
 
 
 class Assistant:
@@ -76,6 +78,16 @@ class Assistant:
         self._api_client: InferenceClient | None = None  # HF API client
         self.conversation_history: list[dict] = []
         self.inference_mode = config.model.inference_mode
+        self.prompt_cache = self._init_prompt_cache()
+
+    def _init_prompt_cache(self) -> PromptResponseCache | None:
+        """Create the prompt-response cache when enabled."""
+        if not self.config.prompt_cache.enabled:
+            return None
+        cache_path = self.config.prompt_cache.path
+        if not cache_path:
+            cache_path = str(Path(self.config.data_dir) / "prompt_cache.json")
+        return PromptResponseCache(cache_path)
 
     def load_model(self) -> None:
         """Initialise the inference backend (local model or API client)."""
@@ -184,6 +196,13 @@ class Assistant:
         if not self.is_ready:
             raise RuntimeError("Model not loaded. Call load_model() first.")
 
+        sys_ctx_str = self._format_system_context(system_context)
+        cache_context = self._cache_context(sys_ctx_str)
+        cached_response = self._get_cached_response(question, cache_context)
+        if cached_response is not None:
+            self._append_history(question, cached_response.text)
+            return cached_response
+
         # 1. Retrieve relevant documentation
         rag_results = []
         rag_context = "No documentation indexed yet."
@@ -203,15 +222,6 @@ class Assistant:
             ):
                 rag_results = rag_results[:-1]
             rag_context = self.rag.format_context(rag_results)
-
-        # 2. Build system context string
-        sys_ctx_str = ""
-        if system_context:
-            sys_ctx_str = (
-                f"Current System State:\n{system_context.summary()}"
-            )
-        else:
-            sys_ctx_str = "System context: Not available (running in demo mode)."
 
         # 3. Construct the full prompt
         system_message = SYSTEM_PROMPT.format(
@@ -264,8 +274,7 @@ class Assistant:
         ).strip()
 
         # 6. Update conversation history
-        self.conversation_history.append({"role": "user", "content": question})
-        self.conversation_history.append({"role": "assistant", "content": answer_text})
+        self._append_history(question, answer_text)
 
         # 7. Extract source references
         sources = [
@@ -277,16 +286,80 @@ class Assistant:
             for r in rag_results
         ]
 
-        return AssistantResponse(
+        response = AssistantResponse(
             text=answer_text,
             sources=sources,
             generation_time_ms=generation_time,
             tokens_used=tokens_used,
         )
+        self._store_cached_response(question, cache_context, response)
+        return response
 
     def reset_conversation(self) -> None:
         """Clear conversation history."""
         self.conversation_history.clear()
+
+    def _append_history(self, question: str, answer_text: str) -> None:
+        """Append one user/assistant turn to local conversation history."""
+        self.conversation_history.append({"role": "user", "content": question})
+        self.conversation_history.append({"role": "assistant", "content": answer_text})
+
+    def _format_system_context(self, system_context: SystemContext | None) -> str:
+        """Format system context for prompts and cache keys."""
+        if system_context:
+            return f"Current System State:\n{system_context.summary()}"
+        return "System context: Not available (running in demo mode)."
+
+    def _cache_context(self, system_context: str) -> str:
+        """Build the non-prompt part of the prompt-cache key."""
+        model_id = (
+            self.config.model.api_model_id
+            if self.inference_mode == "api"
+            else f"{self.config.model.repo_id}/{self.config.model.filename}"
+        )
+        return "\n".join(
+            [
+                f"inference_mode={self.inference_mode}",
+                f"model={model_id}",
+                f"rag_collection={self.config.rag.collection_name}",
+                f"rag_top_k={self.config.rag.top_k}",
+                f"rag_rerank={self.config.rag.rerank}",
+                system_context,
+            ]
+        )
+
+    def _get_cached_response(
+        self,
+        question: str,
+        cache_context: str,
+    ) -> AssistantResponse | None:
+        """Load a cached answer for this question/context pair."""
+        if self.prompt_cache is None:
+            return None
+        payload = self.prompt_cache.get(question, system_context=cache_context)
+        if not payload:
+            return None
+        return AssistantResponse(
+            text=payload.get("text", ""),
+            sources=payload.get("sources", []),
+            generation_time_ms=0.0,
+            tokens_used=0,
+            cached=True,
+        )
+
+    def _store_cached_response(
+        self,
+        question: str,
+        cache_context: str,
+        response: AssistantResponse,
+    ) -> None:
+        """Persist a generated answer for future repeated prompts."""
+        if self.prompt_cache is None or response.cached:
+            return
+        try:
+            self.prompt_cache.set(question, response, system_context=cache_context)
+        except OSError as e:
+            logger.warning("Could not write prompt cache: %s", e)
 
 
 # -- Onboarding-specific prompt templates --

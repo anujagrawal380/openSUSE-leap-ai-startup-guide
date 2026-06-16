@@ -189,6 +189,15 @@ class RAGConfig:
 
 
 @dataclass
+class PromptCacheConfig:
+    """Prompt-response cache settings."""
+
+    enabled: bool = True
+    # Empty path means ``<data_dir>/prompt_cache.json``.
+    path: str = ""
+
+
+@dataclass
 class DocumentationSource:
     """A documentation source to ingest."""
 
@@ -210,6 +219,7 @@ class Config:
     model: ModelConfig = field(default_factory=ModelConfig)
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
     rag: RAGConfig = field(default_factory=RAGConfig)
+    prompt_cache: PromptCacheConfig = field(default_factory=PromptCacheConfig)
     data_dir: str = "./data"
     log_level: str = "INFO"
     doc_sources: list[DocumentationSource] = field(default_factory=lambda: [
@@ -321,6 +331,10 @@ class Config:
             for k, v in raw["rag"].items():
                 if hasattr(cfg.rag, k):
                     setattr(cfg.rag, k, v)
+        if "prompt_cache" in raw:
+            for k, v in raw["prompt_cache"].items():
+                if hasattr(cfg.prompt_cache, k):
+                    setattr(cfg.prompt_cache, k, v)
         for simple in ("data_dir", "log_level"):
             if simple in raw:
                 setattr(cfg, simple, raw[simple])

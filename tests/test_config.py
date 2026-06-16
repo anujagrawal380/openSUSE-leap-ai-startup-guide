@@ -13,6 +13,7 @@ def test_default_config():
     assert cfg.rag.chunk_size == 900
     assert cfg.rag.top_k == 8
     assert cfg.rag.backend == "lancedb"
+    assert cfg.prompt_cache.enabled is True
     assert len(cfg.doc_sources) > 0
 
 
@@ -33,6 +34,9 @@ def test_config_from_yaml(tmp_path: Path):
         "rag:\n"
         "  chunk_size: 1000\n"
         "  top_k: 6\n"
+        "prompt_cache:\n"
+        "  enabled: false\n"
+        "  path: /tmp/suse-assist-cache.json\n"
         "log_level: DEBUG\n"
     )
     cfg = Config.from_yaml(yaml_file)
@@ -41,6 +45,8 @@ def test_config_from_yaml(tmp_path: Path):
     assert cfg.model.temperature == 0.7
     assert cfg.rag.chunk_size == 1000
     assert cfg.rag.top_k == 6
+    assert cfg.prompt_cache.enabled is False
+    assert cfg.prompt_cache.path == "/tmp/suse-assist-cache.json"
     assert cfg.log_level == "DEBUG"
     # Unchanged defaults should persist
     assert cfg.model.repo_id == "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"

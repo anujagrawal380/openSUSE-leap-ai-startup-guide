@@ -27,10 +27,20 @@ ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
 Target Phase 1 image:
 
 ```bash
-registry.opensuse.org/<project>/suse-assist:latest
+registry.opensuse.org/home/anujagrawal/suse-assist/images/suse-assist:latest
 ```
 
-Replace `<project>` after the OBS project/package name is agreed with mentors.
+OBS staging project:
+
+```text
+home:anujagrawal:suse-assist
+```
+
+OBS package:
+
+```text
+suse-assist-image
+```
 
 ## Run On Leap
 
@@ -55,7 +65,7 @@ SUSE_ASSIST_PORT=19000 scripts/deploy_container.sh web -d
 To use a future `registry.opensuse.org` image:
 
 ```bash
-SUSE_ASSIST_IMAGE=registry.opensuse.org/<project>/suse-assist:latest \
+SUSE_ASSIST_IMAGE=registry.opensuse.org/home/anujagrawal/suse-assist/images/suse-assist:latest \
   scripts/deploy_container.sh web -d
 ```
 
@@ -184,8 +194,19 @@ podman save suse-assist:bci-phase1 | gzip -9 > suse-assist-bci-phase1.tar.gz
 
 ## OBS Handoff
 
-Phase 1 should publish the BCI-based container first. The RPM work can start
-with small integration packages later:
+The OBS staging project/package have been created:
+
+```text
+home:anujagrawal:suse-assist / suse-assist-image
+```
+
+OBS recognizes the Dockerfile build and reaches the Python dependency install
+step. The current blocker is expected: OBS builders have no internet access, so
+`pip install` cannot fetch PyTorch or the rest of the ML stack from external
+indexes.
+
+Phase 1 should still publish the BCI-based container first. The RPM work can
+start with small integration packages later:
 
 - Quadlet unit
 - desktop launcher
