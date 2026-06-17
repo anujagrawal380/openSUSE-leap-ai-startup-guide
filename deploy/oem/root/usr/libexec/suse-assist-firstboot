@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Populate the persistent suse-assist data volume on first boot.
+
+set -euo pipefail
+
+IMAGE="${SUSE_ASSIST_IMAGE:-ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest}"
+VOLUME="${SUSE_ASSIST_VOLUME:-suse-assist-data}"
+BUNDLE="${SUSE_ASSIST_BUNDLE:-/usr/share/suse-assist/offline-bundle.tar.gz}"
+MARKER="${SUSE_ASSIST_FIRSTBOOT_MARKER:-/var/lib/suse-assist/.firstboot-done}"
+
+log() {
+    printf '[suse-assist-firstboot] %s\n' "$*"
+}
+
+ensure_image() {
+    if podman image exists "$IMAGE"; then
+        return
+    fi
+    log "Container image not present locally; pulling $IMAGE"
+    podman pull "$IMAGE"
+}
+
+mkdir -p "$(dirname "$MARKER")"
+podman volume exists "$VOLUME" >/dev/null 2>&1 || podman volume create "$VOLUME"
+
+if [[ -f "$BUNDLE" ]]; then
+    log "Importing offline runtime bundle: $BUNDLE"
+    ensure_image
+    bundle_dir="$(dirname "$BUNDLE")"
+    bundle_name="$(basename "$BUNDLE")"
+    podman run --rm \
+        -v "${VOLUME}:/app/data" \
+        -v "${bundle_dir}:/bundle:ro" \
+        "$IMAGE" bundle import "/bundle/${bundle_name}" --overwrite
+else
+    log "No offline bundle found; using networked firstboot ingest"
+    podman pull "$IMAGE"
+    podman run --rm -v "${VOLUME}:/app/data" "$IMAGE" ingest
+fi
+
+install -D -m 0644 /dev/null "$MARKER"
+log "Firstboot setup complete"

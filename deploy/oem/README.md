@@ -15,7 +15,8 @@ a Podman Quadlet unit** instead of a packaged binary:
 | `config.sh` | image-config hook — enables services |
 | `root/` | overlay tree copied into the image root |
 | `root/etc/containers/systemd/suse-assist.container` | Quadlet unit — runs the published container as a systemd service |
-| `root/etc/systemd/system/suse-assist-firstboot.service` | one-shot firstboot: pull image + build the doc index into the data volume |
+| `root/etc/systemd/system/suse-assist-firstboot.service` | one-shot firstboot: populate the data volume before the web service starts |
+| `root/usr/libexec/suse-assist-firstboot` | firstboot helper: import an offline bundle if present, otherwise pull + ingest |
 
 Once the assistant ships as an RPM (roadmap Phase 2), swap the container for
 `<package>suse-assist</package>` in `appliance.kiwi` and the native systemd unit
@@ -32,13 +33,24 @@ kiwi-ng --profile Leap16 system build \
     --target-dir /tmp/oem-build
 ```
 
-## Open item — offline models
+## Offline runtime bundle
 
 The container deliberately excludes the ~5 GB model + LanceDB index (they live
-in the `suse-assist-data` volume). `suse-assist-firstboot.service` populates
-them over the network on first boot.
+in the `suse-assist-data` volume). Firstboot now supports both paths:
 
-A **fully offline** OEM image must instead bundle that content into the image
-(overlay the volume directory, or ship the model in an RPM). This bundle-vs-fetch
-decision is the main blocker for a true offline appliance and is tracked on the
-project roadmap.
+- If `/usr/share/suse-assist/offline-bundle.tar.gz` exists, it runs
+  `suse-assist bundle import` into the Podman volume.
+- If no bundle exists, it falls back to the current networked prototype:
+  pull the container image and run `suse-assist ingest`.
+
+Create the bundle on a prepared machine or VM:
+
+```bash
+suse-assist bundle export --model-tier standard \
+  --output offline-bundle.tar.gz
+```
+
+A fully offline OEM image must include both the container image and
+`offline-bundle.tar.gz` in the KIWI overlay or in RPM payloads. The firstboot
+logic is ready for that layout; the remaining policy decision is where the
+multi-GB bundle should be published and how it should be licensed/rebuilt.

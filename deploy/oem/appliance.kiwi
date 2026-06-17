@@ -12,11 +12,12 @@
       kiwi-ng --profile Leap16 system build \
         --description deploy/oem --target-dir /tmp/oem-build
 
-  KNOWN OPEN ITEM — offline models:
+  OFFLINE MODELS:
   The container excludes the ~5 GB model + vector index (they live in the
-  suse-assist-data volume). config.sh below assumes networked firstboot to
-  populate them. A fully offline OEM image must instead bundle that content
-  into the image (overlay the volume) — tracked as a roadmap item.
+  suse-assist-data volume). Firstboot imports
+  /usr/share/suse-assist/offline-bundle.tar.gz when present, otherwise it falls
+  back to networked pull + ingest. A fully offline OEM image must include both
+  the container image and that bundle in the image or RPM payload.
 -->
 
 <image schemaversion="7.4" name="openSUSE-Leap-AI-Onboarding">
