@@ -242,6 +242,9 @@ suse-assist ingest     # Scrape docs and build vector store
 suse-assist benchmark  # Run performance benchmarks (latency/throughput)
 suse-assist eval       # Compare models on answer quality + latency
 suse-assist sysinfo    # Show detected system context
+suse-assist doctor     # Check local models, vector store, cache, and web port
+suse-assist bundle     # Export/import offline model + RAG runtime data
+suse-assist setup native-service  # Render/install a native systemd web service
 suse-assist models recommend  # Recommend a local model tier based on RAM
 suse-assist mcp        # Run MCP server exposing tools over stdio
 ```

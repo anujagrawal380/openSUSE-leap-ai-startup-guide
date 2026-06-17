@@ -609,6 +609,87 @@ def bundle_import(ctx: click.Context, bundle_path: str, overwrite: bool) -> None
     )
 
 
+@main.group()
+def setup() -> None:
+    """Prepare local deployment targets."""
+
+
+@setup.command("native-service")
+@click.option("--app-dir", type=click.Path(path_type=Path), default=Path("/opt/suse-assist"))
+@click.option("--data-dir", type=click.Path(path_type=Path), default=Path("/var/lib/suse-assist"))
+@click.option("--venv-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--unit-dir", type=click.Path(path_type=Path), default=Path("/etc/systemd/system"))
+@click.option("--config-path", type=click.Path(path_type=Path), default=None)
+@click.option("--service-user", default="suseai", help="System user that runs the service")
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default="auto",
+    help="Model tier written to the generated service config",
+)
+@click.option("--port", type=int, default=7860, help="Web UI port for the service")
+@click.option("--demo", is_flag=True, help="Use simulated system context in the service")
+@click.option("--create-user", is_flag=True, help="Create the service user if needed")
+@click.option("--enable-now", is_flag=True, help="Run systemctl enable --now after writing files")
+@click.option("--dry-run", is_flag=True, help="Print files instead of writing them")
+def setup_native_service(
+    app_dir: Path,
+    data_dir: Path,
+    venv_dir: Path | None,
+    unit_dir: Path,
+    config_path: Path | None,
+    service_user: str,
+    model_tier: str,
+    port: int,
+    demo: bool,
+    create_user: bool,
+    enable_now: bool,
+    dry_run: bool,
+) -> None:
+    """Render or install a native systemd service for the web UI."""
+    from opensuse_ai.service_setup import (
+        NativeServiceOptions,
+        build_native_service_files,
+        create_service_user,
+        enable_native_service,
+        write_native_service_files,
+    )
+
+    options = NativeServiceOptions(
+        app_dir=app_dir,
+        data_dir=data_dir,
+        venv_dir=venv_dir or app_dir / ".venv",
+        unit_dir=unit_dir,
+        config_path=config_path or app_dir / "config-systemd.yaml",
+        service_user=service_user,
+        model_tier=model_tier,
+        port=port,
+        demo=demo,
+    )
+
+    if dry_run:
+        files = build_native_service_files(options)
+        console.print(Panel(files.config_text, title=str(files.config_path), border_style="cyan"))
+        console.print(Panel(files.service_text, title=str(files.service_path), border_style="cyan"))
+        return
+
+    try:
+        if create_user:
+            create_service_user(service_user)
+        files = write_native_service_files(options)
+        if enable_now:
+            enable_native_service()
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    console.print(f"[green]Wrote[/green] {files.config_path}")
+    console.print(f"[green]Wrote[/green] {files.service_path}")
+    if enable_now:
+        console.print("[green]Enabled and started[/green] suse-assist.service")
+    else:
+        console.print("[dim]Next: systemctl daemon-reload && systemctl enable --now suse-assist[/dim]")
+
+
 @main.command()
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
 @click.option("--share", is_flag=True, help="Create a public Gradio share link")
