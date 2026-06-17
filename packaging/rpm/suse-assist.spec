@@ -58,13 +58,22 @@ host system context detection to answer setup and troubleshooting questions.
 
 install -D -m 0644 deploy/suse-assist.service \
   %{buildroot}%{_unitdir}/suse-assist.service
+install -D -m 0755 packaging/desktop/suse-assist-launcher.sh \
+  %{buildroot}%{_bindir}/suse-assist-launcher
+install -D -m 0644 packaging/desktop/suse-assist.desktop \
+  %{buildroot}%{_datadir}/applications/suse-assist.desktop
+install -D -m 0644 packaging/desktop/icons/hicolor/scalable/apps/suse-assist.svg \
+  %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/suse-assist.svg
 
 %files
 %license LICENSE
 %doc README.md docs
 %{_bindir}/suse-assist
+%{_bindir}/suse-assist-launcher
 %{python3_sitelib}/opensuse_ai
 %{python3_sitelib}/opensuse_leap_ai_guide-*.dist-info
 %{_unitdir}/suse-assist.service
+%{_datadir}/applications/suse-assist.desktop
+%{_datadir}/icons/hicolor/scalable/apps/suse-assist.svg
 
 %changelog

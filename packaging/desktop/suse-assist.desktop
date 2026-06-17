@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=openSUSE AI Assistant
+GenericName=openSUSE onboarding assistant
+Comment=Open the local openSUSE AI onboarding assistant
+Exec=suse-assist-launcher
+Icon=suse-assist
+Terminal=false
+Categories=System;Utility;Documentation;
+Keywords=openSUSE;assistant;help;onboarding;setup;
+StartupNotify=true
