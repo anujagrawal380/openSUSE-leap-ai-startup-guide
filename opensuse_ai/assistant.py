@@ -36,6 +36,7 @@ from opensuse_ai.config import Config
 from opensuse_ai.prompt_cache import PromptResponseCache
 from opensuse_ai.safety import (
     SAFE_PROMPT_INJECTION_RESPONSE,
+    apply_output_guardrails,
     is_prompt_injection_attempt,
     sanitize_model_output,
 )
@@ -306,12 +307,6 @@ class Assistant:
 
         generation_time = (time.perf_counter() - start_time) * 1000
 
-        answer_text = sanitize_model_output(answer_text)
-
-        # 6. Update conversation history
-        self._append_history(question, answer_text)
-
-        # 7. Extract source references
         sources = [
             {
                 "url": r["metadata"].get("source_url", ""),
@@ -320,6 +315,10 @@ class Assistant:
             }
             for r in rag_results
         ]
+        answer_text = apply_output_guardrails(sanitize_model_output(answer_text), sources)
+
+        # 6. Update conversation history
+        self._append_history(question, answer_text)
 
         response = AssistantResponse(
             text=answer_text,
