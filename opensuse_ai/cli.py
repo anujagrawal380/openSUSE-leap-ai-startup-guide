@@ -609,9 +609,76 @@ def bundle_import(ctx: click.Context, bundle_path: str, overwrite: bool) -> None
     )
 
 
-@main.group()
-def setup() -> None:
-    """Prepare local deployment targets."""
+@main.group(invoke_without_command=True)
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default="auto",
+    help="Model tier to prepare",
+)
+@click.option("--max-pages", type=int, default=None, help="Limit pages per docs source during ingest")
+@click.option("--bundle", "bundle_path", type=click.Path(path_type=Path), default=None)
+@click.option("--overwrite-bundle", is_flag=True, help="Overwrite files when importing --bundle")
+@click.option("--offline", is_flag=True, help="Do not download models or scrape documentation")
+@click.option("--skip-model", is_flag=True, help="Do not download/cache the GGUF model")
+@click.option("--skip-ingest", is_flag=True, help="Do not build the documentation index")
+@click.option("--port", type=int, default=7860, help="Web UI port to check with doctor")
+@click.pass_context
+def setup(
+    ctx: click.Context,
+    model_tier: str,
+    max_pages: int | None,
+    bundle_path: Path | None,
+    overwrite_bundle: bool,
+    offline: bool,
+    skip_model: bool,
+    skip_ingest: bool,
+    port: int,
+) -> None:
+    """Prepare first-run data or local deployment targets."""
+    if ctx.invoked_subcommand is not None:
+        return
+
+    cfg: Config = ctx.obj["config"]
+    setup_logging(cfg.log_level)
+
+    from opensuse_ai.setup_wizard import SetupOptions, run_setup
+
+    options = SetupOptions(
+        model_tier=model_tier,
+        max_pages=max_pages,
+        bundle_path=bundle_path,
+        offline=offline,
+        skip_model=skip_model,
+        skip_ingest=skip_ingest,
+        overwrite_bundle=overwrite_bundle,
+        web_port=port,
+    )
+
+    try:
+        result = run_setup(
+            cfg,
+            options,
+            progress=lambda message: console.print(f"  [cyan]•[/cyan] {message}"),
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    table = Table(title="suse-assist setup", border_style="cyan")
+    table.add_column("Step", style="bold cyan")
+    for action in result.actions:
+        table.add_row(action)
+    console.print(table)
+
+    if result.doctor is not None and not result.doctor.ok:
+        console.print("[yellow]Setup finished, but doctor still reports missing runtime pieces.[/yellow]")
+        console.print("[dim]Run `suse-assist doctor` for details.[/dim]")
+
+    console.print(
+        "\n[bold]Start commands[/bold]\n"
+        f"  suse-assist chat --model-tier {result.model_tier}\n"
+        f"  suse-assist web --model-tier {result.model_tier} --port {port}"
+    )
 
 
 @setup.command("native-service")
