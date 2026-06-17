@@ -199,10 +199,18 @@ podman run -d --name opensuse-ai-guide --network=host \
   -v /:/host:ro \
   -e SUSE_AI_HOST_ROOT=/host \
   -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
+  --read-only --tmpfs /tmp:rw,noexec,nosuid,size=512m \
+  --security-opt no-new-privileges --cap-drop=all \
+  --memory=6g --cpus=4 --pids-limit=512 \
   opensuse-ai-assistant web --model-tier standard --port 7860
 ```
 
 Notes:
+- Use `opensuse-ai-data` as the persistent volume name for manual runs; OEM
+  Quadlet uses `suse-assist-data`.
+- Check runtime health with `podman ps --filter name=opensuse-ai-guide` and
+  logs with `podman logs -f opensuse-ai-guide`. For OEM/systemd deployments,
+  use `systemctl status suse-assist` and `journalctl -u suse-assist -f`.
 - `HF_HUB_OFFLINE=1` runs fully offline once the GGUF model, the MiniLM embedding
   snapshot (`data/models/embeddings/`), and the vector store are present in the
   data volume. Build the store on a networked machine with

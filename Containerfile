@@ -50,6 +50,8 @@ VOLUME ["/app/data"]
 
 # Expose Gradio web UI port
 EXPOSE 7860
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/', timeout=5)"
 
 USER suseai
 

@@ -5,7 +5,7 @@ services:
       dockerfile: Containerfile
     container_name: opensuse-leap-ai-guide
     volumes:
-      - model-data:/app/data
+      - opensuse-ai-data:/app/data
     ports:
       - "7860:7860"
     # Resource constraints — tuned for Qwen3-4B (standard tier)
@@ -26,6 +26,12 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 512
+    environment:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
     # Health check for the Gradio web UI
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/')"]
@@ -35,5 +41,5 @@ services:
       start_period: 60s
 
 volumes:
-  model-data:
+  opensuse-ai-data:
     driver: local

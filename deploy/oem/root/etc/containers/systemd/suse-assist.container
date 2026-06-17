@@ -13,6 +13,18 @@ Wants=network-online.target
 Image=ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
 Exec=web --model-tier standard --port 7860
 PublishPort=7860:7860
+PodmanArgs=--read-only
+PodmanArgs=--tmpfs /tmp:rw,noexec,nosuid,size=512m
+PodmanArgs=--security-opt no-new-privileges
+PodmanArgs=--cap-drop=all
+PodmanArgs=--memory=6g
+PodmanArgs=--cpus=4
+PodmanArgs=--pids-limit=512
+HealthCmd=python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/', timeout=5)"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=120s
 
 # Persistent models + vector index (populated at firstboot, see config.sh)
 Volume=suse-assist-data:/app/data
