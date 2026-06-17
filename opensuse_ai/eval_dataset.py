@@ -115,4 +115,93 @@ EVAL_ITEMS: list[EvalItem] = [
         ),
         expected_facts=["Leap stable point release", "Tumbleweed rolling release"],
     ),
+    EvalItem(
+        id="packman_vendor_change",
+        query="How do I enable Packman and switch multimedia packages to it safely?",
+        reference=(
+            "Add the Packman repository for your openSUSE version, refresh "
+            "metadata, then perform a vendor switch only for the Packman repo, "
+            "for example with 'sudo zypper dup --from packman "
+            "--allow-vendor-change'. Review the transaction carefully because "
+            "vendor changes replace packages from the openSUSE vendor with "
+            "Packman builds. Keep repositories enabled and use 'zypper lr -d' "
+            "to verify aliases and priorities."
+        ),
+        expected_facts=[
+            "Packman repository",
+            "zypper dup --from packman",
+            "--allow-vendor-change",
+            "review transaction",
+        ],
+    ),
+    EvalItem(
+        id="codecs",
+        query="How do I install multimedia codecs on openSUSE Leap?",
+        reference=(
+            "For patent-restricted multimedia codecs, openSUSE users commonly "
+            "enable the Packman repository and install or switch the relevant "
+            "GStreamer, ffmpeg, and VLC-related packages from Packman. Refresh "
+            "repositories first, then use zypper to install the needed codec "
+            "packages or perform the Packman vendor switch. Check the official "
+            "openSUSE wiki guidance for the exact repository matching your "
+            "Leap version."
+        ),
+        expected_facts=["Packman", "GStreamer", "ffmpeg", "zypper", "Leap version"],
+    ),
+    EvalItem(
+        id="wifi_bluetooth",
+        query="Wi-Fi or Bluetooth is not working after installing openSUSE. What should I check?",
+        reference=(
+            "First check whether the device is detected with tools such as "
+            "'lspci', 'lsusb', 'ip link', 'rfkill list', and Bluetooth service "
+            "status. Make sure airplane mode or rfkill is not blocking the "
+            "device, NetworkManager is running for Wi-Fi, and bluetooth.service "
+            "is enabled/running for Bluetooth. Some adapters need firmware "
+            "packages from the openSUSE repositories; install missing firmware "
+            "and reboot or reload the driver."
+        ),
+        expected_facts=[
+            "rfkill",
+            "NetworkManager",
+            "bluetooth.service",
+            "firmware packages",
+            "lspci or lsusb",
+        ],
+    ),
+    EvalItem(
+        id="disk_full_snapshots",
+        query="My disk is full because of Btrfs snapshots. How do I free space safely?",
+        reference=(
+            "Check space with 'btrfs filesystem usage /' and inspect snapshots "
+            "with 'sudo snapper list'. Use Snapper cleanup policies first, for "
+            "example 'sudo snapper cleanup number' or timeline cleanup, instead "
+            "of deleting files inside /.snapshots manually. You can adjust "
+            "Snapper limits in the root config and should keep at least one "
+            "known-good snapshot before removing old ones."
+        ),
+        expected_facts=[
+            "btrfs filesystem usage",
+            "snapper list",
+            "snapper cleanup",
+            "do not manually delete /.snapshots",
+        ],
+    ),
+    EvalItem(
+        id="failed_systemd_services",
+        query="How do I investigate failed systemd services on openSUSE?",
+        reference=(
+            "List failed units with 'systemctl --failed'. Inspect one service "
+            "with 'systemctl status <unit>' and read logs with 'journalctl -u "
+            "<unit> -b'. After fixing the cause, restart the service with "
+            "'sudo systemctl restart <unit>' and clear the failed state with "
+            "'sudo systemctl reset-failed <unit>' if needed."
+        ),
+        expected_facts=[
+            "systemctl --failed",
+            "systemctl status",
+            "journalctl -u",
+            "restart",
+            "reset-failed",
+        ],
+    ),
 ]
