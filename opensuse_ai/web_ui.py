@@ -5,13 +5,22 @@ Provides a browser-based chat interface that wraps the same
 Assistant + RAG pipeline used by the CLI.
 """
 
-import logging
+from __future__ import annotations
 
-import gradio as gr
+import logging
+import time
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterator
+
+try:
+    import gradio as gr
+except ImportError:
+    gr = None
 
 from opensuse_ai.assistant import ONBOARDING_TOPICS, Assistant
 from opensuse_ai.config import Config
-from opensuse_ai.rag import RAGPipeline
 from opensuse_ai.system_context import (
     SystemContext,
     detect_system_context,
@@ -40,7 +49,63 @@ CUSTOM_CSS = """
     font-size: 0.95rem;
 }
 footer { display: none !important; }
+#runtime-status {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0 0 0.75rem 0;
+}
 """
+
+
+@dataclass(frozen=True)
+class WebRuntimeStatus:
+    """Small status summary displayed above the chat."""
+
+    model_label: str
+    model_ready: bool
+    rag_ready: bool
+    model_path: Path
+    data_dir: Path
+
+
+class WebAssistantRuntime:
+    """Lazy-load the expensive backend and expose slow-inference progress."""
+
+    def __init__(self, config: Config, *, demo_mode: bool = False):
+        from opensuse_ai.rag import RAGPipeline
+
+        self.config = config
+        self.rag = RAGPipeline(config)
+        self.assistant = Assistant(config, self.rag)
+        self.model_loaded = False
+        if demo_mode:
+            self.system_context: SystemContext = simulated_opensuse_context()
+        else:
+            self.system_context = detect_system_context()
+
+    @property
+    def status(self) -> WebRuntimeStatus:
+        return WebRuntimeStatus(
+            model_label=f"{self.config.model.tier}: {self.config.model.filename}",
+            model_ready=self.model_loaded,
+            rag_ready=self.rag.is_populated,
+            model_path=Path(self.config.data_dir) / "models" / self.config.model.filename,
+            data_dir=Path(self.config.data_dir),
+        )
+
+    def ensure_model_loaded(self) -> None:
+        """Load the LLM once, on first user request."""
+        if self.model_loaded:
+            return
+        self.assistant.load_model()
+        self.model_loaded = True
+
+    def ask(self, msg: str, history: list[dict]):
+        """Synchronize Gradio history and ask the assistant."""
+        self.assistant.conversation_history.clear()
+        for turn in history or []:
+            self.assistant.conversation_history.append(turn)
+        return self.assistant.ask(msg, system_context=self.system_context)
 
 
 def _format_sources(sources: list[dict]) -> str:
@@ -57,6 +122,54 @@ def _format_sources(sources: list[dict]) -> str:
         else:
             lines.append(f"- {title} ({relevance})")
     return "\n".join(lines)
+
+
+def _runtime_status_md(status: WebRuntimeStatus) -> str:
+    """Render compact runtime state for the web UI."""
+    model_state = "loaded" if status.model_ready else "loads on first question"
+    rag_state = "ready" if status.rag_ready else "missing index"
+    return (
+        f"<div id='runtime-status'>"
+        f"<strong>Model:</strong> {status.model_label} ({model_state}) · "
+        f"<strong>Docs:</strong> {rag_state} · "
+        f"<strong>Data:</strong> {status.data_dir}"
+        f"</div>"
+    )
+
+
+def _missing_runtime_guidance(status: WebRuntimeStatus) -> str:
+    """Return actionable setup guidance when local runtime files are absent."""
+    messages = []
+    if not status.model_path.exists():
+        messages.append(
+            f"Model file is missing: `{status.model_path}`. "
+            "Run `suse-assist setup --model-tier "
+            f"{status.model_label.split(':', 1)[0]}` or import an offline bundle."
+        )
+    if not status.rag_ready:
+        messages.append(
+            "Documentation index is missing. Run `suse-assist ingest` or "
+            "`suse-assist bundle import <bundle>`."
+        )
+    if not messages:
+        return ""
+    return "\n\n".join(f"**Setup needed:** {message}" for message in messages)
+
+
+def _thinking_message(started_at: float, phase: str) -> str:
+    """Format an elapsed-time progress message for slow CPU inference."""
+    elapsed = int(time.monotonic() - started_at)
+    return f"_{phase}. Elapsed: {elapsed}s. CPU-only responses can take 70-120s._"
+
+
+def _resolve_topic_shortcut(user_message: str) -> str:
+    """Expand web topic shortcuts into full prompts."""
+    msg = user_message.strip()
+    if msg.lower().startswith("topic "):
+        topic_key = msg[6:].strip().lower().replace(" ", "_")
+        if topic_key in ONBOARDING_TOPICS:
+            return ONBOARDING_TOPICS[topic_key]
+    return msg
 
 
 def build_app(
@@ -77,39 +190,54 @@ def build_app(
     share : bool
         If True, Gradio creates a public share link.
     """
-    # ── Initialise backend ────────────────────────────────────────────────
-    rag = RAGPipeline(config)
-    assistant = Assistant(config, rag)
-    assistant.load_model()
+    if gr is None:
+        raise ImportError("gradio is not installed. Install it to use `suse-assist web`.")
 
-    if demo_mode:
-        sys_ctx: SystemContext = simulated_opensuse_context()
-    else:
-        sys_ctx = detect_system_context()
+    # ── Initialise lightweight runtime; model loads lazily on first prompt ──
+    runtime = WebAssistantRuntime(config, demo_mode=demo_mode)
 
     # ── Chat handler ──────────────────────────────────────────────────────
-    def respond(user_message: str, history: list[dict]) -> str:
+    def respond(user_message: str, history: list[dict]) -> Iterator[str]:
         """Process a single user turn and return the assistant reply."""
         if not user_message.strip():
-            return ""
+            yield ""
+            return
 
-        # Handle topic shortcuts
-        msg = user_message.strip()
-        if msg.lower().startswith("topic "):
-            topic_key = msg[6:].strip().lower().replace(" ", "_")
-            if topic_key in ONBOARDING_TOPICS:
-                msg = ONBOARDING_TOPICS[topic_key]
+        msg = _resolve_topic_shortcut(user_message)
+        started_at = time.monotonic()
+        guidance = _missing_runtime_guidance(runtime.status)
+        if guidance:
+            yield guidance
 
-        # Sync web history → assistant history so context carries over
-        assistant.conversation_history.clear()
-        for turn in (history or []):
-            assistant.conversation_history.append(turn)
+        yield _thinking_message(started_at, "Preparing local model")
+        try:
+            runtime.ensure_model_loaded()
+        except Exception as exc:
+            yield (
+                "**Could not load the local model.**\n\n"
+                f"`{exc}`\n\n"
+                "Run `suse-assist doctor` to see which runtime files are missing."
+            )
+            return
 
-        response = assistant.ask(msg, system_context=sys_ctx)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(runtime.ask, msg, history or [])
+            while not future.done():
+                yield _thinking_message(started_at, "Model is thinking")
+                time.sleep(1)
+            try:
+                response = future.result()
+            except Exception as exc:
+                yield (
+                    "**The assistant hit an error while answering.**\n\n"
+                    f"`{exc}`\n\n"
+                    "Run `suse-assist doctor` and check the service logs."
+                )
+                return
 
         reply = response.text + _format_sources(response.sources)
         reply += f"\n\n*⏱ {response.generation_time_ms:.0f} ms · {response.tokens_used} tokens*"
-        return reply
+        yield reply
 
     # ── Topics helper ─────────────────────────────────────────────────────
     def topics_md() -> str:
@@ -123,8 +251,13 @@ def build_app(
 
     # ── System info helper ────────────────────────────────────────────────
     def sysinfo_md() -> str:
-        lines = sys_ctx.summary().split("\n")
-        return "\n".join(f"- **{l.split(':')[0].strip()}:** {':'.join(l.split(':')[1:]).strip()}" for l in lines if ":" in l)
+        lines = runtime.system_context.summary().split("\n")
+        return "\n".join(
+            f"- **{line.split(':')[0].strip()}:** "
+            f"{':'.join(line.split(':')[1:]).strip()}"
+            for line in lines
+            if ":" in line
+        )
 
     # ── Build the Gradio UI ───────────────────────────────────────────────
     with gr.Blocks(title="opensuse-leap-ai-startup-guide") as app:
@@ -141,6 +274,7 @@ def build_app(
         with gr.Tabs():
             # ── Chat tab ──────────────────────────────────────────────────
             with gr.Tab("💬 Chat"):
+                gr.HTML(_runtime_status_md(runtime.status))
                 chatbot = gr.ChatInterface(
                     fn=respond,
                     examples=[
@@ -184,6 +318,8 @@ def launch_web_ui(
     server_port: int = 7860,
 ) -> None:
     """Build and launch the Gradio web UI."""
+    if gr is None:
+        raise ImportError("gradio is not installed. Install it to use `suse-assist web`.")
     app = build_app(config, demo_mode=demo_mode, share=share)
     app.launch(
         server_name="0.0.0.0",
