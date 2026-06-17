@@ -400,12 +400,17 @@ class Assistant:
 
 ONBOARDING_TOPICS = {
     "welcome": "Welcome me to openSUSE and give me a brief overview of what makes it special.",
-    "package_management": "Explain how package management works in openSUSE with zypper. Show me the most common commands I'll need.",
+    "package_management": (
+        "Explain how package management works in openSUSE with zypper. "
+        "Show me the most common commands I'll need."
+    ),
     "yast": "What is YaST and how do I use it for system administration?",
     "repositories": "How do repositories work in openSUSE? How do I add, remove, and manage them?",
     "desktop": "Guide me through customizing my desktop environment on openSUSE.",
     "firewall": "How do I configure the firewall on openSUSE?",
     "updates": "How do I keep my openSUSE system up to date? Explain the update process.",
-    "troubleshooting": "What are common troubleshooting steps when something goes wrong on openSUSE?",
+    "troubleshooting": (
+        "What are common troubleshooting steps when something goes wrong on openSUSE?"
+    ),
     "community": "Tell me about the openSUSE community and how I can get involved.",
 }

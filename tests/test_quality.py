@@ -94,7 +94,15 @@ def test_gemini_judge_parses_response(monkeypatch):
                 ]
             }
 
-    monkeypatch.setattr(q, "requests", type("R", (), {"post": staticmethod(lambda *a, **k: _Resp()), "RequestException": Exception}), raising=False)
+    fake_requests = type(
+        "R",
+        (),
+        {
+            "post": staticmethod(lambda *a, **k: _Resp()),
+            "RequestException": Exception,
+        },
+    )
+    monkeypatch.setattr(q, "requests", fake_requests, raising=False)
     judge = GeminiJudge(api_key="dummy")
     score, reason = judge.score("q", "a zypper answer", "ref", ["zypper"])
     assert score == 4

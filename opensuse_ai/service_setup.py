@@ -76,6 +76,10 @@ def render_native_config(options: NativeServiceOptions) -> str:
 def render_native_service(options: NativeServiceOptions) -> str:
     """Render a hardened systemd unit for the web UI."""
     demo_arg = " --demo" if options.demo else ""
+    exec_start = (
+        f"{options.venv_dir}/bin/suse-assist --config {options.config_path} "
+        f"web{demo_arg} --port {options.port}"
+    )
     return f"""[Unit]
 Description=openSUSE AI Onboarding Assistant
 Documentation=https://github.com/anujagrawal380/openSUSE-leap-ai-startup-guide
@@ -91,7 +95,7 @@ Environment=PATH={options.venv_dir}/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONUNBUFFERED=1
 Environment=HF_HUB_OFFLINE=1
 Environment=TRANSFORMERS_OFFLINE=1
-ExecStart={options.venv_dir}/bin/suse-assist --config {options.config_path} web{demo_arg} --port {options.port}
+ExecStart={exec_start}
 Restart=on-failure
 RestartSec=10
 TimeoutStartSec=900
@@ -128,7 +132,13 @@ def write_native_service_files(options: NativeServiceOptions) -> NativeServiceFi
 
 def create_service_user(user: str) -> None:
     """Create the system service user when it does not already exist."""
-    if subprocess.run(["id", user], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+    result = subprocess.run(
+        ["id", user],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if result.returncode == 0:
         return
     subprocess.run(
         ["useradd", "--system", "--create-home", "--shell", "/sbin/nologin", user],

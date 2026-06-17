@@ -1,10 +1,9 @@
 """Tests for the RAG pipeline (unit-level, no model downloads)."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from opensuse_ai.config import Config
 from opensuse_ai.rag import RAGPipeline
-from opensuse_ai.scraper import ScrapedPage
 
 
 def test_format_context_empty():

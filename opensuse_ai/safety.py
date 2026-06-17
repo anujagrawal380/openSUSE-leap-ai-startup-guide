@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 PROMPT_INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "ignore_instructions",

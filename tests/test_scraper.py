@@ -1,6 +1,6 @@
 """Tests for the documentation scraper."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from opensuse_ai.config import DocumentationSource
 from opensuse_ai.scraper import DocumentationScraper, ScrapedPage

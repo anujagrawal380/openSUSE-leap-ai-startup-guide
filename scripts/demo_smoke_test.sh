@@ -13,6 +13,7 @@ RAG_QUERY="${RAG_QUERY:-zypper install package}"
 WEB_URL="${WEB_URL:-http://127.0.0.1:7860/}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-180}"
 SUSE_ASSIST_CMD="${SUSE_ASSIST_CMD:-python3 -m opensuse_ai.cli}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 SKIP_CLI="${SKIP_CLI:-0}"
 SKIP_RAG="${SKIP_RAG:-0}"
 SKIP_WEB="${SKIP_WEB:-0}"
@@ -41,7 +42,7 @@ run_cli_demo() {
 
 run_rag_retrieval() {
     log "RAG retrieval"
-    python3 - "$CONFIG" "$RAG_QUERY" <<'PY'
+    "$PYTHON_BIN" - "$CONFIG" "$RAG_QUERY" <<'PY'
 import sys
 
 from opensuse_ai.config import Config

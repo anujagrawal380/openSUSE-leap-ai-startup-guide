@@ -80,7 +80,9 @@ class SystemContext:
             f"Package Manager: {self.package_manager}",
             fs_line,
             f"Boot Stage: {self.boot_stage}",
-            f"Memory: {self.memory_available_gb:.1f} GB available / {self.memory_total_gb:.1f} GB total",
+            "Memory: "
+            f"{self.memory_available_gb:.1f} GB available / "
+            f"{self.memory_total_gb:.1f} GB total",
             f"Disk Usage: {self.disk_usage_percent:.1f}%",
         ]
         if self.gpu:
@@ -91,7 +93,8 @@ class SystemContext:
         if self.network_manager:
             network += f" (managed by {self.network_manager})"
         lines.append(f"Network: {network}")
-        lines.append(f"Firewall: {'active (firewalld)' if self.firewall_active else 'not detected'}")
+        firewall = "active (firewalld)" if self.firewall_active else "not detected"
+        lines.append(f"Firewall: {firewall}")
         if self.pending_updates > 0:
             lines.append(f"Pending Updates: {self.pending_updates}")
         if self.services_failed:
@@ -149,7 +152,9 @@ def detect_system_context() -> SystemContext:
 
     # Desktop environment — active session (env vars) plus installed DEs
     # (session files survive into the host bind-mount where env vars don't).
-    ctx.desktop_env = os.environ.get("XDG_CURRENT_DESKTOP", "") or os.environ.get("DESKTOP_SESSION", "")
+    ctx.desktop_env = os.environ.get("XDG_CURRENT_DESKTOP", "") or os.environ.get(
+        "DESKTOP_SESSION", ""
+    )
     ctx.display_server = os.environ.get("XDG_SESSION_TYPE", "")
     ctx.installed_desktops = _detect_installed_desktops()
 
@@ -343,7 +348,11 @@ def _detect_zypper_state(ctx: SystemContext) -> None:
         )
         if result.returncode == 0:
             # Count lines that look like package updates
-            lines = [l for l in result.stdout.splitlines() if "|" in l and "v |" not in l.lower()]
+            lines = [
+                line
+                for line in result.stdout.splitlines()
+                if "|" in line and "v |" not in line.lower()
+            ]
             ctx.pending_updates = max(0, len(lines) - 2)  # subtract header lines
     except (subprocess.SubprocessError, FileNotFoundError):
         pass

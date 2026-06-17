@@ -102,8 +102,6 @@ class Benchmarker:
             assistant: An initialized Assistant instance with model loaded.
             system_context: Optional SystemContext for grounding.
         """
-        from opensuse_ai.assistant import Assistant  # noqa: F811
-
         report = BenchmarkReport(
             model_name=f"{assistant.config.model.repo_id}/{assistant.config.model.filename}",
         )

@@ -533,7 +533,12 @@ def mcp_tools_list(command: str | None) -> None:
 
 @mcp_tools.command("call")
 @click.argument("tool_name")
-@click.option("--args", "args_json", default="{}", help='Tool arguments as JSON, e.g. \'{"query": "snapper"}\'')
+@click.option(
+    "--args",
+    "args_json",
+    default="{}",
+    help='Tool arguments as JSON, e.g. \'{"query": "snapper"}\'',
+)
 @click.option(
     "--command",
     default=None,
@@ -616,7 +621,12 @@ def bundle_import(ctx: click.Context, bundle_path: str, overwrite: bool) -> None
     default="auto",
     help="Model tier to prepare",
 )
-@click.option("--max-pages", type=int, default=None, help="Limit pages per docs source during ingest")
+@click.option(
+    "--max-pages",
+    type=int,
+    default=None,
+    help="Limit pages per docs source during ingest",
+)
 @click.option("--bundle", "bundle_path", type=click.Path(path_type=Path), default=None)
 @click.option("--overwrite-bundle", is_flag=True, help="Overwrite files when importing --bundle")
 @click.option("--offline", is_flag=True, help="Do not download models or scrape documentation")
@@ -671,7 +681,9 @@ def setup(
     console.print(table)
 
     if result.doctor is not None and not result.doctor.ok:
-        console.print("[yellow]Setup finished, but doctor still reports missing runtime pieces.[/yellow]")
+        console.print(
+            "[yellow]Setup finished, but doctor still reports missing runtime pieces.[/yellow]"
+        )
         console.print("[dim]Run `suse-assist doctor` for details.[/dim]")
 
     console.print(
@@ -754,7 +766,9 @@ def setup_native_service(
     if enable_now:
         console.print("[green]Enabled and started[/green] suse-assist.service")
     else:
-        console.print("[dim]Next: systemctl daemon-reload && systemctl enable --now suse-assist[/dim]")
+        console.print(
+            "[dim]Next: systemctl daemon-reload && systemctl enable --now suse-assist[/dim]"
+        )
 
 
 @main.command()

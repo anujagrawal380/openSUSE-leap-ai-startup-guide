@@ -7,7 +7,6 @@ import pytest
 from opensuse_ai.config import RAGConfig
 from opensuse_ai.vectorstore.base import VectorStoreBackend
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
