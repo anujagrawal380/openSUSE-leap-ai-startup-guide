@@ -49,6 +49,19 @@ osc commit -m "Update suse-assist BCI container"
 osc build openSUSE_Tumbleweed x86_64
 ```
 
+Vendored-wheel smoke result:
+
+- `home:anujagrawal:suse-assist/suse-assist-wheelhouse-smoke`
+- `images/x86_64`: succeeded
+- `containerfile/x86_64`: succeeded
+
+See [`vendored-wheel-experiment.md`](vendored-wheel-experiment.md). Generate a
+larger wheelhouse with:
+
+```bash
+scripts/build_obs_wheelhouse.sh
+```
+
 ## Native RPM
 
 The draft spec is in [`../rpm/suse-assist.spec`](../rpm/suse-assist.spec). It is
