@@ -555,6 +555,60 @@ def mcp_tools_call(tool_name: str, args_json: str, command: str | None) -> None:
     console.print(Panel(result, title=f"{tool_name} → {server_command}", border_style="cyan"))
 
 
+@main.group()
+def bundle() -> None:
+    """Export or import offline runtime bundles."""
+
+
+@bundle.command("export")
+@click.option("--output", "-o", required=True, help="Bundle output path (.tar.gz recommended)")
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default=None,
+    help="Override configured model tier before selecting the GGUF file",
+)
+@click.pass_context
+def bundle_export(ctx: click.Context, output: str, model_tier: str | None) -> None:
+    """Export model, vector store, and embedding cache for offline installs."""
+    cfg: Config = ctx.obj["config"]
+    if model_tier is not None:
+        cfg.apply_model_tier(model_tier)
+
+    from opensuse_ai.bundle import export_bundle
+
+    try:
+        result = export_bundle(cfg, output)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    console.print(
+        f"[green]Exported[/green] {result.files} files "
+        f"({result.bytes / (1024 ** 2):.1f} MiB) to [bold]{result.path}[/bold]"
+    )
+
+
+@bundle.command("import")
+@click.argument("bundle_path")
+@click.option("--overwrite", is_flag=True, help="Overwrite files already present in data_dir")
+@click.pass_context
+def bundle_import(ctx: click.Context, bundle_path: str, overwrite: bool) -> None:
+    """Import an offline runtime bundle into data_dir."""
+    cfg: Config = ctx.obj["config"]
+
+    from opensuse_ai.bundle import import_bundle
+
+    try:
+        result = import_bundle(cfg, bundle_path, overwrite=overwrite)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    console.print(
+        f"[green]Imported[/green] {result.files} files "
+        f"({result.bytes / (1024 ** 2):.1f} MiB) from [bold]{result.path}[/bold]"
+    )
+
+
 @main.command()
 @click.option("--demo", is_flag=True, help="Use simulated openSUSE system context")
 @click.option("--share", is_flag=True, help="Create a public Gradio share link")
