@@ -339,6 +339,7 @@ opensuse_ai/             # The Python package (installed as the `suse-assist` CL
     └── lance_backend.py # LanceDB implementation
 
 scripts/local_ingest.py  # Build the vector store on a networked host (for offline VMs)
+scripts/demo_smoke_test.sh # Prepared-runtime smoke test: CLI, RAG, web endpoint
 deploy/                  # systemd unit + Leap VM setup script for native deployment
 tests/                   # pytest suite (config, RAG, system context, eval, MCP, …)
 
