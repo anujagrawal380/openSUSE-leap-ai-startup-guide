@@ -5,6 +5,7 @@ Provides an interactive, Rich-powered terminal UI for chatting with
 the assistant, running onboarding workflows, and benchmarking.
 """
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -437,6 +438,53 @@ def sysinfo(ctx: click.Context) -> None:
 
     sys_ctx = detect_system_context()
     console.print(Panel(sys_ctx.summary(), title="System Context", border_style="cyan"))
+
+
+@main.command()
+@click.option(
+    "--model-tier",
+    type=click.Choice(["auto", "test", "lite", "standard", "full", "custom"]),
+    default=None,
+    help="Override configured model tier before checking local model files",
+)
+@click.option("--port", type=int, default=7860, help="Web UI port to check")
+@click.option("--json", "as_json", is_flag=True, help="Print machine-readable JSON")
+@click.pass_context
+def doctor(ctx: click.Context, model_tier: str | None, port: int, as_json: bool) -> None:
+    """Check whether this install has the files and services it needs."""
+    cfg: Config = ctx.obj["config"]
+    if model_tier is not None:
+        cfg.apply_model_tier(model_tier)
+
+    from opensuse_ai.doctor import run_doctor
+
+    report = run_doctor(cfg, web_port=port)
+
+    if as_json:
+        click.echo(json.dumps(report.as_dict(), indent=2))
+    else:
+        table = Table(title="suse-assist doctor", border_style="cyan")
+        table.add_column("Check", style="bold cyan")
+        table.add_column("Status")
+        table.add_column("Details")
+        table.add_column("Hint", style="dim")
+
+        status_style = {
+            "ok": "[green]ok[/green]",
+            "warn": "[yellow]warn[/yellow]",
+            "fail": "[red]fail[/red]",
+        }
+        for check in report.checks:
+            table.add_row(
+                check.name,
+                status_style.get(check.status, check.status),
+                check.detail,
+                check.hint,
+            )
+        console.print(table)
+
+    if not report.ok:
+        sys.exit(1)
 
 
 @main.command()
