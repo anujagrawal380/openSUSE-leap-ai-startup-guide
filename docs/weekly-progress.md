@@ -4,6 +4,35 @@ Stand-up style log for weekly meetings. Newest week first.
 
 ---
 
+## Week of Jun 15, 2026
+
+**Done**
+- Moved the container to an openSUSE/SUSE BCI Python base and added the first OEM appliance scaffolding: KIWI description, Podman Quadlet unit, and a firstboot path for preparing the assistant data volume.
+- Added the missing first-run/admin commands:
+  - `suse-assist doctor` checks whether a local install has the model, vector store, embedding cache, host mount, web port, and container runtime pieces it needs.
+  - `suse-assist setup` handles model tier selection, optional offline bundle import, model download/cache, docs ingest, and final doctor check.
+  - `suse-assist setup native-service` renders/installs the native systemd unit.
+- Added offline bundle support with `suse-assist bundle export/import`. This gives us a concrete path for machines that cannot fetch models/docs during first boot: build the bundle once, then import the GGUF model, MiniLM cache, LanceDB index, and manifest offline.
+- Improved the web UI for the real VM behavior: CPU-only answers can take over a minute, so the UI now shows model/tier state, lazy first-load guidance, elapsed “thinking” progress, and clearer errors when the model or index is missing.
+- Added desktop launcher packaging assets (`.desktop`, icon, launcher script) so the assistant can be opened like a normal desktop tool once packaged or hooked into welcome/firstboot.
+- Hardened the assistant and runtime: prompt-injection guardrails, hidden-reasoning cleanup, warnings around destructive/vendor-change commands, command-answer references, container healthcheck, read-only runtime defaults, dropped capabilities, resource limits, and clearer volume/log docs.
+- Expanded the evaluation set with more common openSUSE onboarding issues: Packman/vendor change, codecs, Wi-Fi/Bluetooth, disk-full Btrfs snapshots, and failed systemd services.
+- Added a reusable demo smoke script for prepared environments. It checks the CLI path, RAG retrieval, and web endpoint without having to manually click through the demo.
+- Added OBS/RPM packaging scaffolding and ran a small vendored-wheel experiment in `home:anujagrawal:suse-assist/suse-assist-wheelhouse-smoke`. The experiment built successfully, so OBS can handle the basic `pip --no-index --find-links=/wheelhouse` approach; the open question is whether scaling that to the real ML stack is acceptable.
+- Did a cleanup/validation pass after the new work; the repo is in a cleaner state and the web/RAG/smoke paths were exercised locally where possible.
+
+**Next**
+- Scale the OBS vendored-wheel experiment from the tiny test wheelhouse to the real ML stack, or start packaging the missing Python dependencies as proper RPMs.
+- Test the hardened container end-to-end with Podman on the Leap VM and update the OBS `suse-assist-image` package from the latest container work.
+- Produce an actual offline bundle from the VM’s model/vectorstore data and test the OEM firstboot import path against it.
+
+**Blockers**
+- Need mentor/community direction on whether vendored wheels are acceptable as a short-term OBS prototype or whether we should invest immediately in proper openSUSE RPMs for the ML stack.
+- Need final decision on model/index distribution for offline OEM images: KIWI overlay, RPM payload/subpackage, separate artifact, or firstboot fetch.
+- Full container/RPM runtime validation still needs to happen on the Leap VM or OBS, not only on the local workstation.
+
+---
+
 ## Week of Jun 8, 2026
 
 **Done**
