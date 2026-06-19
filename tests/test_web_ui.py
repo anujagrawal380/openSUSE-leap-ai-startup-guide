@@ -23,9 +23,9 @@ def test_runtime_status_mentions_model_and_index(tmp_path: Path):
 
     html = _runtime_status_md(status)
 
-    assert "test: tiny.gguf" in html
-    assert "loads on first question" in html
-    assert "missing index" in html
+    assert "Test model selected: tiny.gguf" in html
+    assert "First answer may take longer while the model loads" in html
+    assert "Docs index missing" in html
 
 
 def test_missing_runtime_guidance_is_actionable(tmp_path: Path):

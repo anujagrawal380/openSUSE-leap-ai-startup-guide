@@ -126,13 +126,20 @@ def _format_sources(sources: list[dict]) -> str:
 
 def _runtime_status_md(status: WebRuntimeStatus) -> str:
     """Render compact runtime state for the web UI."""
-    model_state = "loaded" if status.model_ready else "loads on first question"
-    rag_state = "ready" if status.rag_ready else "missing index"
+    tier, _, filename = status.model_label.partition(": ")
+    tier_label = tier.replace("-", " ").title()
+    model_name = filename or status.model_label
+    if status.model_ready:
+        model_state = f"{tier_label} model loaded: {model_name}"
+    else:
+        model_state = (
+            f"{tier_label} model selected: {model_name}. "
+            "First answer may take longer while the model loads"
+        )
+    rag_state = "Docs index ready" if status.rag_ready else "Docs index missing"
     return (
         f"<div id='runtime-status'>"
-        f"<strong>Model:</strong> {status.model_label} ({model_state}) · "
-        f"<strong>Docs:</strong> {rag_state} · "
-        f"<strong>Data:</strong> {status.data_dir}"
+        f"{model_state}. {rag_state}."
         f"</div>"
     )
 

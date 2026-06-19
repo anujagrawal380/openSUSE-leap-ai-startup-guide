@@ -13,6 +13,9 @@ Wants=network-online.target
 Image=ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
 Exec=web --model-tier standard --port 7860
 PublishPort=7860:7860
+# The image's suseai user is UID/GID 999; keep the runtime explicit so mounted
+# volumes stay writable across base-image rebuilds.
+PodmanArgs=--user=999:999
 PodmanArgs=--read-only
 PodmanArgs=--tmpfs /tmp:rw,noexec,nosuid,size=512m
 PodmanArgs=--security-opt no-new-privileges

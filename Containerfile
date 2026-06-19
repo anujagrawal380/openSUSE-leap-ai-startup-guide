@@ -31,8 +31,12 @@ RUN zypper --non-interactive install --no-recommends \
         libgomp1 \
     && zypper clean --all
 
-# Non-root user for security
-RUN groupadd -r suseai && useradd -r -g suseai -m suseai
+# Non-root user for security. Keep the UID/GID stable so Podman volumes created
+# by previous image builds remain writable after BCI base updates.
+ARG SUSEAI_UID=999
+ARG SUSEAI_GID=999
+RUN groupadd --system --gid "${SUSEAI_GID}" suseai \
+    && useradd --system --uid "${SUSEAI_UID}" --gid suseai --create-home suseai
 
 WORKDIR /app
 

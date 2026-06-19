@@ -22,6 +22,15 @@ Once the assistant ships as an RPM (roadmap Phase 2), swap the container for
 `<package>suse-assist</package>` in `appliance.kiwi` and the native systemd unit
 in [`../suse-assist.service`](../suse-assist.service).
 
+## Runtime ownership
+
+The container runs as a non-root `suseai` user with stable UID/GID `999:999`.
+The Quadlet unit sets the same `--user=999:999` explicitly so the
+`suse-assist-data` volume stays writable even if the BCI base image changes its
+system-user allocation behavior. If an existing volume was created by an older
+image with different ownership, fix the volume owner or run a one-time migration
+before enabling the service.
+
 ## Building
 
 Not buildable on the offline VM or on macOS — needs kiwi + openSUSE repos.

@@ -189,9 +189,9 @@ podman run -it --rm \
 
 ### Containerized deployment on an openSUSE host (real system context)
 
-The container base image is not openSUSE, so by default system context detection
-reports the container, not the host. Mount the host root read-only and set
-`SUSE_AI_HOST_ROOT` to detect the real host (distro, package manager, disk):
+The container is built from the openSUSE/SUSE BCI Python base. Mount the host
+root read-only and set `SUSE_AI_HOST_ROOT` to detect the real host instead of
+only the container filesystem (distro, package manager, disk):
 
 ```bash
 podman run -d --name opensuse-ai-guide --network=host \
@@ -208,6 +208,9 @@ podman run -d --name opensuse-ai-guide --network=host \
 Notes:
 - Use `opensuse-ai-data` as the persistent volume name for manual runs; OEM
   Quadlet uses `suse-assist-data`.
+- The image runs as the non-root `suseai` user with stable UID/GID `999:999`.
+  Existing volumes from older BCI builds should either be owned by `999:999` or
+  the container should be run with the matching `--user` value for that volume.
 - Check runtime health with `podman ps --filter name=opensuse-ai-guide` and
   logs with `podman logs -f opensuse-ai-guide`. For OEM/systemd deployments,
   use `systemctl status suse-assist` and `journalctl -u suse-assist -f`.
@@ -219,6 +222,45 @@ Notes:
 - Pending-update and failed-service detection require running `zypper`/`systemctl`
   on the host, so they are skipped in containerized mode; a native (non-container)
   install reports them.
+
+### Offline VM image transfer
+
+For VMs without outbound internet, use the GitHub Actions image artifact instead
+of `podman pull`.
+
+1. Run the **Build and publish container** workflow.
+2. Download the `suse-assist-image-amd64` artifact.
+3. Transfer the artifact zip to the VM, or split it into chunks if SSH is slow:
+
+```bash
+split -b 32M -d -a 3 suse-assist-image-artifact.zip /tmp/suse-assist-chunks/part-
+ssh opensuse-gsoc-vm 'rm -rf /root/suse-assist-chunks && mkdir -p /root/suse-assist-chunks'
+find /tmp/suse-assist-chunks -type f -printf '%f\n' | sort |
+  xargs -I{} -P6 scp -q "/tmp/suse-assist-chunks/{}" \
+    "opensuse-gsoc-vm:/root/suse-assist-chunks/{}"
+ssh opensuse-gsoc-vm 'cat /root/suse-assist-chunks/part-* > /root/suse-assist-image.zip'
+```
+
+4. Verify the checksum, extract, and load:
+
+```bash
+sha256sum suse-assist-image-artifact.zip
+ssh opensuse-gsoc-vm 'sha256sum /root/suse-assist-image.zip'
+ssh opensuse-gsoc-vm '
+  python3 - <<PY
+import zipfile
+with zipfile.ZipFile("/root/suse-assist-image.zip") as z:
+    bad = z.testzip()
+    if bad:
+        raise SystemExit(f"bad zip member: {bad}")
+    z.extractall("/root/suse-assist-image")
+PY
+  podman load -i /root/suse-assist-image/suse-assist-image.tar
+'
+```
+
+The Leap 16 VM validation used this path, then ran the loaded image against the
+existing offline `opensuse-ai-data` volume and `suse-assist doctor` passed.
 
 ### Documentation sources
 
