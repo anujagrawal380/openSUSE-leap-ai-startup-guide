@@ -58,7 +58,10 @@ jobs:
           file: ./Containerfile
           platforms: linux/amd64
           tags: suse-assist:latest
-          outputs: type=docker,dest=/tmp/suse-assist-image.tar
+          load: true
+
+      - name: Save image archive
+        run: docker save suse-assist:latest -o /tmp/suse-assist-image.tar
 
       - name: Upload image archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v5.0.0
