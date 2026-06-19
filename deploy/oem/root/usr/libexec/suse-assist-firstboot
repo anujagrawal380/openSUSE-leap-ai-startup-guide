@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-IMAGE="${SUSE_ASSIST_IMAGE:-ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest}"
+IMAGE="${SUSE_ASSIST_IMAGE:-registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest}"
 VOLUME="${SUSE_ASSIST_VOLUME:-suse-assist-data}"
 BUNDLE="${SUSE_ASSIST_BUNDLE:-/usr/share/suse-assist/offline-bundle.tar.gz}"
 MARKER="${SUSE_ASSIST_FIRSTBOOT_MARKER:-/var/lib/suse-assist/.firstboot-done}"

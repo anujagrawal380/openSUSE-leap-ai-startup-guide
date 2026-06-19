@@ -27,11 +27,16 @@ The package now builds in OBS with a vendored CPython 3.11 wheelhouse:
 
 ```text
 images/x86_64: succeeded
-containerfile/x86_64: succeeded
-OBS package revision: 7
-Image tar: suse-assist-0.1.0.x86_64-7.1.tar
+OBS package revision: 10
+Published image tags: latest, 10.3
 Image tar size: ~692 MB
 Wheelhouse source size: ~467 MB
+```
+
+Published image:
+
+```bash
+podman pull registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest
 ```
 
 The build installs the Python stack offline with:
@@ -73,14 +78,16 @@ Registry publishing is enabled for the home project. If the registry tag has
 not appeared yet, wait for the publisher and check:
 
 ```bash
-curl https://registry.opensuse.org/v2/home/anujagrawal/suse-assist/images/suse-assist/tags/list
+curl https://registry.opensuse.org/v2/home/anujagrawal/suse-assist/images/opensuse/suse-assist/tags/list
 ```
 
 Vendored-wheel smoke result:
 
 - `home:anujagrawal:suse-assist/suse-assist-wheelhouse-smoke`
 - `images/x86_64`: succeeded
-- `containerfile/x86_64`: succeeded
+- registry image: `home/anujagrawal/suse-assist/images/suse-assist-wheelhouse-smoke`
+- purpose: small proof that OBS can install from a vendored wheelhouse with
+  `pip --no-index --find-links=/wheelhouse`
 
 See [`vendored-wheel-experiment.md`](vendored-wheel-experiment.md). Generate a
 larger wheelhouse with:

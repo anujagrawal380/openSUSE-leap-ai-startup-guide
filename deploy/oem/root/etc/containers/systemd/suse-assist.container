@@ -9,8 +9,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-# Swap to registry.opensuse.org/<project>/... once the OBS build publishes there.
-Image=ghcr.io/anujagrawal380/opensuse-leap-ai-startup-guide:latest
+Image=registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest
 Exec=web --model-tier standard --port 7860
 PublishPort=7860:7860
 # The image's suseai user is UID/GID 999; keep the runtime explicit so mounted

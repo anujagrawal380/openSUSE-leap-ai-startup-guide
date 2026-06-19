@@ -19,12 +19,13 @@ Stand-up style log for weekly meetings. Newest week first.
 - Expanded the evaluation set with more common openSUSE onboarding issues: Packman/vendor change, codecs, Wi-Fi/Bluetooth, disk-full Btrfs snapshots, and failed systemd services.
 - Added a reusable demo smoke script for prepared environments. It checks the CLI path, RAG retrieval, and web endpoint without having to manually click through the demo.
 - Added OBS/RPM packaging scaffolding and proved the vendored-wheel path at real scale in `home:anujagrawal:suse-assist/suse-assist-image`. OBS now builds the BCI container with a ~467 MB CPython 3.11 wheelhouse, including Torch, LanceDB, Gradio, MCP, Transformers, and a locally built `llama-cpp-python` wheel.
+- Published the OBS-built BCI container to `registry.opensuse.org` from the home project. The current pull path is `registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest`.
 - Tested the new BCI image path on the offline Leap VM without using VM internet: GitHub Actions built the image artifact, we transferred it over SSH, verified the checksum on the VM, loaded it with Podman, and ran it against the existing offline model/vectorstore volume.
 - Fixed the container volume ownership issue found during VM validation by making the runtime `suseai` UID/GID stable at `999:999`, matching the existing VM data volume.
 - Did a cleanup/validation pass after the new work; the repo is in a cleaner state and the web/RAG/smoke paths were exercised locally where possible.
 
 **Next**
-- Confirm the registry.opensuse.org pull path after OBS publisher catches up, then smoke-test that image on the Leap VM.
+- Smoke-test the registry.opensuse.org image on the Leap VM by pulling it on a connected machine, saving it, copying it to the offline VM, and loading it with Podman.
 - Decide whether the vendored-wheel OBS package is acceptable as the short-term publishing path, or start packaging the missing Python dependencies as proper RPMs.
 - Produce an actual offline bundle from the VM’s model/vectorstore data and test the OEM firstboot import path against it.
 
