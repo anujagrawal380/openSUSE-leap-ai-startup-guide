@@ -17,21 +17,41 @@ Use this home project until mentors pick the final devel project.
 ## Container image
 
 The first OBS target is the BCI-based container image from the repository
-`Containerfile`. The image currently builds in normal networked CI, but an OBS
-build is blocked by Python dependencies downloaded with `pip` during the build:
+`Containerfile`. The staging package is:
 
-- `torch`
-- `llama-cpp-python`
+```text
+home:anujagrawal:suse-assist/suse-assist-image
+```
+
+The package now builds in OBS with a vendored CPython 3.11 wheelhouse:
+
+```text
+images/x86_64: succeeded
+containerfile/x86_64: succeeded
+OBS package revision: 7
+Image tar: suse-assist-0.1.0.x86_64-7.1.tar
+Image tar size: ~692 MB
+Wheelhouse source size: ~467 MB
+```
+
+The build installs the Python stack offline with:
+
+```bash
+pip install --no-index --find-links=/wheelhouse "torch==2.4.1+cpu"
+pip install --no-index --find-links=/wheelhouse ".[mcp]"
+```
+
+OBS builds run in a clean build environment and should not fetch arbitrary PyPI
+artifacts. The vendored wheelhouse is the short-term prototype path. The
+wheelhouse includes the large packages that blocked the networked build:
+
+- `torch==2.4.1+cpu`
+- `llama-cpp-python` built locally as a CPython 3.11 Linux wheel
 - `lancedb`
 - `sentence-transformers` / `transformers`
 - `gradio`
 - `mcp`
-
-OBS builds run in a clean build environment and should not fetch arbitrary PyPI
-artifacts. Short-term options:
-
-- vendor wheels into the OBS package as a prototype-only step
-- split the image into an OBS-built base plus a later networked layer
+- build-system wheels: `setuptools`, `wheel`
 
 Long-term option:
 
@@ -49,6 +69,13 @@ osc commit -m "Update suse-assist BCI container"
 osc build openSUSE_Tumbleweed x86_64
 ```
 
+Registry publishing is enabled for the home project. If the registry tag has
+not appeared yet, wait for the publisher and check:
+
+```bash
+curl https://registry.opensuse.org/v2/home/anujagrawal/suse-assist/images/suse-assist/tags/list
+```
+
 Vendored-wheel smoke result:
 
 - `home:anujagrawal:suse-assist/suse-assist-wheelhouse-smoke`
@@ -60,6 +87,17 @@ larger wheelhouse with:
 
 ```bash
 scripts/build_obs_wheelhouse.sh
+```
+
+Note: the current real wheelhouse was generated with a CPython 3.11 `uv` venv
+because the local Ubuntu environment did not have `python3-pip`/`ensurepip`.
+`llama-cpp-python` had no compatible prebuilt wheel, so it was built locally
+with:
+
+```bash
+CMAKE_ARGS="-DGGML_NATIVE=OFF -DGGML_OPENMP=ON" FORCE_CMAKE=1 \
+  python -m pip wheel --wheel-dir /tmp/suse-assist-built-wheels \
+  "llama-cpp-python>=0.2.56"
 ```
 
 ## Native RPM
