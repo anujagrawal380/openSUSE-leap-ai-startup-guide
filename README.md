@@ -54,10 +54,13 @@ fully offline):
   Notes, curated wiki SDB articles incl. NVIDIA troubleshooting)
 - ✅ Real system-context detection (Btrfs/Snapper, GPU, network, firewall, locale, …)
 - ✅ CLI + web UI, containerized, runs offline on the VM
+- ✅ openSUSE/SUSE BCI container builds in OBS and publishes to
+  `registry.opensuse.org`
 - ✅ Hardware-based model tiers + an answer-quality evaluation suite (judged by a neutral
   external LLM — see [`docs/evaluations/`](docs/evaluations/))
 - ✅ MCP server + client integration
-- 🚧 **Next:** native systemd service, RPM/OBS packaging, installer/firstboot integration
+- 🚧 **Next:** RPM dependency packaging decision, offline OEM bundle distribution,
+  installer/firstboot integration
 
 See [`docs/`](docs/) for the design decisions, model/vector-DB evaluations, and integration
 plans behind each of these. Roadmap detail at the [end of this README](#roadmap).
@@ -193,6 +196,12 @@ The container is built from the openSUSE/SUSE BCI Python base. Mount the host
 root read-only and set `SUSE_AI_HOST_ROOT` to detect the real host instead of
 only the container filesystem (distro, package manager, disk):
 
+Published OBS image:
+
+```bash
+podman pull registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest
+```
+
 ```bash
 podman run -d --name opensuse-ai-guide --network=host \
   -v opensuse-ai-data:/app/data \
@@ -202,7 +211,8 @@ podman run -d --name opensuse-ai-guide --network=host \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=512m \
   --security-opt no-new-privileges --cap-drop=all \
   --memory=6g --cpus=4 --pids-limit=512 \
-  opensuse-ai-assistant web --model-tier standard --port 7860
+  registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest \
+  web --model-tier standard --port 7860
 ```
 
 Notes:
@@ -225,42 +235,48 @@ Notes:
 
 ### Offline VM image transfer
 
-For VMs without outbound internet, use the GitHub Actions image artifact instead
-of `podman pull`.
+For VMs without outbound internet, use the OBS-built image tar instead of
+`podman pull`. This has already been validated on the Leap 16.0 stage VM; do
+not repeat it unless a new OBS image revision needs validation or the VM image
+has been removed.
 
-1. Run the **Build and publish container** workflow.
-2. Download the `suse-assist-image-amd64` artifact.
-3. Transfer the artifact zip to the VM, or split it into chunks if SSH is slow:
+Current validated OBS artifact:
 
-```bash
-split -b 32M -d -a 3 suse-assist-image-artifact.zip /tmp/suse-assist-chunks/part-
-ssh opensuse-gsoc-vm 'rm -rf /root/suse-assist-chunks && mkdir -p /root/suse-assist-chunks'
-find /tmp/suse-assist-chunks -type f -printf '%f\n' | sort |
-  xargs -I{} -P6 scp -q "/tmp/suse-assist-chunks/{}" \
-    "opensuse-gsoc-vm:/root/suse-assist-chunks/{}"
-ssh opensuse-gsoc-vm 'cat /root/suse-assist-chunks/part-* > /root/suse-assist-image.zip'
+```text
+suse-assist-0.1.0.x86_64-10.3.tar
 ```
 
-4. Verify the checksum, extract, and load:
+Download it on a connected machine:
 
 ```bash
-sha256sum suse-assist-image-artifact.zip
-ssh opensuse-gsoc-vm 'sha256sum /root/suse-assist-image.zip'
+osc -A https://api.opensuse.org getbinaries \
+  home:anujagrawal:suse-assist suse-assist-image images x86_64 \
+  suse-assist-0.1.0.x86_64-10.3.tar \
+  -d /tmp/suse-assist-obs-image
+```
+
+Compress, transfer, verify, and load:
+
+```bash
+cd /tmp/suse-assist-obs-image
+gzip -k -f suse-assist-0.1.0.x86_64-10.3.tar
+sha256sum suse-assist-0.1.0.x86_64-10.3.tar.gz > suse-assist-0.1.0.x86_64-10.3.tar.gz.sha256
+scp suse-assist-0.1.0.x86_64-10.3.tar.gz \
+  suse-assist-0.1.0.x86_64-10.3.tar.gz.sha256 \
+  opensuse-gsoc-vm:/root/
 ssh opensuse-gsoc-vm '
-  python3 - <<PY
-import zipfile
-with zipfile.ZipFile("/root/suse-assist-image.zip") as z:
-    bad = z.testzip()
-    if bad:
-        raise SystemExit(f"bad zip member: {bad}")
-    z.extractall("/root/suse-assist-image")
-PY
-  podman load -i /root/suse-assist-image/suse-assist-image.tar
+  cd /root &&
+  sha256sum -c suse-assist-0.1.0.x86_64-10.3.tar.gz.sha256 &&
+  gzip -dc suse-assist-0.1.0.x86_64-10.3.tar.gz | podman load
 '
 ```
 
-The Leap 16 VM validation used this path, then ran the loaded image against the
-existing offline `opensuse-ai-data` volume and `suse-assist doctor` passed.
+The Leap 16 VM currently has this OBS image loaded as
+`localhost/opensuse/suse-assist:latest`, and the public demo on
+<http://stage3.opensuse.org:19000/> runs from that image against the existing
+offline `opensuse-ai-data` volume. See
+[`docs/deployment/obs-registry-vm-validation.md`](docs/deployment/obs-registry-vm-validation.md)
+before redoing any VM transfer or public-demo switch work.
 
 ### Documentation sources
 
@@ -388,6 +404,7 @@ tests/                   # pytest suite (config, RAG, system context, eval, MCP,
 docs/                    # Project narrative, decisions, evaluations — see docs/README.md
 ├── README.md            # Index / map of all documentation
 ├── gsoc-proposal.md     # The accepted GSoC proposal (full project plan)
+├── deployment/          # OBS registry image and VM deployment validation
 ├── evaluations/         # Model & vector-DB decisions and benchmark reports
 ├── integration/         # Installer (Agama) / firstboot integration design
 └── action-items/        # Mentor action-item breakdowns
@@ -433,9 +450,12 @@ The path from today's working assistant to one shipped inside openSUSE:
 - ✅ MCP server + client integration
 
 **Phase 2 — Productionization (in progress)**
-- 🚧 Native systemd service (removes the container host-mount crutch)
+- ✅ OBS-built openSUSE/SUSE BCI container published to `registry.opensuse.org`
+  and running the public VM demo
+- ✅ Native systemd service scaffolding, desktop launcher assets, prompt-injection
+  guardrails, and hardened container runtime defaults
 - 🚧 RPM packaging via OBS — installable with `zypper`
-- 🚧 Prompt-injection defenses and output sanitization hardening
+- 🚧 Offline model/vectorstore bundle distribution for OEM images
 
 **Phase 3 — Distro integration (the endgoal)**
 - ⬜ Installer (Agama) / `jeos-firstboot` hook — onboarding from first boot

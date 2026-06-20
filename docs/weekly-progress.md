@@ -20,19 +20,21 @@ Stand-up style log for weekly meetings. Newest week first.
 - Added a reusable demo smoke script for prepared environments. It checks the CLI path, RAG retrieval, and web endpoint without having to manually click through the demo.
 - Added OBS/RPM packaging scaffolding and proved the vendored-wheel path at real scale in `home:anujagrawal:suse-assist/suse-assist-image`. OBS now builds the BCI container with a ~467 MB CPython 3.11 wheelhouse, including Torch, LanceDB, Gradio, MCP, Transformers, and a locally built `llama-cpp-python` wheel.
 - Published the OBS-built BCI container to `registry.opensuse.org` from the home project. The current pull path is `registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest`.
-- Tested the new BCI image path on the offline Leap VM without using VM internet: GitHub Actions built the image artifact, we transferred it over SSH, verified the checksum on the VM, loaded it with Podman, and ran it against the existing offline model/vectorstore volume.
+- Tested the OBS registry image path on the offline Leap VM without using VM internet: downloaded the OBS image tar on a connected machine, transferred it over SSH, verified the checksum on the VM, loaded it with Podman, and ran it against the existing offline model/vectorstore volume.
+- Switched the public VM demo at `http://stage3.opensuse.org:19000/` to the OBS-built image (`localhost/opensuse/suse-assist:latest`) while keeping the existing `opensuse-ai-data` model/vectorstore volume.
+- Verified the OBS image on the VM with `suse-assist doctor`, web startup, test-tier CLI inference, and standard Gemma 4 E4B CLI inference. Standard-tier CPU response for "What is zypper?" was about 70 seconds with cited RAG output.
 - Fixed the container volume ownership issue found during VM validation by making the runtime `suseai` UID/GID stable at `999:999`, matching the existing VM data volume.
 - Did a cleanup/validation pass after the new work; the repo is in a cleaner state and the web/RAG/smoke paths were exercised locally where possible.
 
 **Next**
-- Smoke-test the registry.opensuse.org image on the Leap VM by pulling it on a connected machine, saving it, copying it to the offline VM, and loading it with Podman.
 - Decide whether the vendored-wheel OBS package is acceptable as the short-term publishing path, or start packaging the missing Python dependencies as proper RPMs.
 - Produce an actual offline bundle from the VM’s model/vectorstore data and test the OEM firstboot import path against it.
+- Start RPM-installed Leap test host validation once RPM packaging is ready enough to install.
 
 **Blockers**
 - Need mentor/community direction on whether vendored wheels are acceptable as a short-term OBS prototype or whether we should invest immediately in proper openSUSE RPMs for the ML stack.
 - Need final decision on model/index distribution for offline OEM images: KIWI overlay, RPM payload/subpackage, separate artifact, or firstboot fetch.
-- RPM runtime validation still needs an RPM-installed Leap test host; the container runtime path is now validated on the Leap VM and the OBS container build now succeeds.
+- RPM runtime validation still needs an RPM-installed Leap test host; the OBS container runtime path is validated on the Leap VM and now powers the public demo.
 
 ---
 

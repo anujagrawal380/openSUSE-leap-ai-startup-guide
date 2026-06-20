@@ -39,6 +39,25 @@ Published image:
 podman pull registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest
 ```
 
+Validation status:
+
+- registry tag `10.3` was downloaded from OBS as
+  `suse-assist-0.1.0.x86_64-10.3.tar`
+- the tar was copied to the offline Leap 16.0 VM over SSH, checksum-verified,
+  and loaded with Podman
+- loaded VM tags:
+  - `localhost/opensuse/suse-assist:latest`
+  - `localhost/opensuse/suse-assist:10.3`
+- the image passed `suse-assist doctor`, web startup, test-tier CLI inference,
+  and standard-tier Gemma 4 E4B CLI inference against the existing
+  `opensuse-ai-data` volume
+- the public demo at `http://stage3.opensuse.org:19000/` now runs from the OBS
+  image
+
+See
+[`../../docs/deployment/obs-registry-vm-validation.md`](../../docs/deployment/obs-registry-vm-validation.md)
+before redoing any image transfer or VM validation work.
+
 The build installs the Python stack offline with:
 
 ```bash

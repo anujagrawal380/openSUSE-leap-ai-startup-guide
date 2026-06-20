@@ -28,6 +28,12 @@ status, and quick start; this folder holds the deeper detail behind each decisio
 | [integration/installer-firstboot-systems.md](integration/installer-firstboot-systems.md) | How Agama, `jeos-firstboot`, and YaST firstboot work — where the assistant can hook in |
 | [integration/agama-leap16-poc.md](integration/agama-leap16-poc.md) | Agama integration design notes for Leap 16 |
 
+## Deployment validation
+
+| Doc | What it is |
+|-----|------------|
+| [deployment/obs-registry-vm-validation.md](deployment/obs-registry-vm-validation.md) | Completed OBS registry image validation on the offline Leap VM, including the current public demo runtime and recovery commands |
+
 ## Design explorations
 
 | Doc | What it is |

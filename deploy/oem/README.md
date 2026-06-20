@@ -22,6 +22,19 @@ Once the assistant ships as an RPM (roadmap Phase 2), swap the container for
 `<package>suse-assist</package>` in `appliance.kiwi` and the native systemd unit
 in [`../suse-assist.service`](../suse-assist.service).
 
+The default container image in the Quadlet and firstboot unit is the
+OBS-published image:
+
+```text
+registry.opensuse.org/home/anujagrawal/suse-assist/images/opensuse/suse-assist:latest
+```
+
+That image has already been copied to the offline Leap 16.0 stage VM, loaded
+with Podman, and promoted to the public demo on
+`http://stage3.opensuse.org:19000/`. See
+[`../../docs/deployment/obs-registry-vm-validation.md`](../../docs/deployment/obs-registry-vm-validation.md)
+before repeating the VM transfer/load work.
+
 ## Runtime ownership
 
 The container runs as a non-root `suseai` user with stable UID/GID `999:999`.
@@ -63,3 +76,7 @@ A fully offline OEM image must include both the container image and
 `offline-bundle.tar.gz` in the KIWI overlay or in RPM payloads. The firstboot
 logic is ready for that layout; the remaining policy decision is where the
 multi-GB bundle should be published and how it should be licensed/rebuilt.
+
+The container runtime path is validated. The remaining OEM-specific validation
+is to produce a real `offline-bundle.tar.gz` from the prepared VM data, include
+it in the image/payload, and test the firstboot import path end to end.
